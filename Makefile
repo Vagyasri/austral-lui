@@ -1,7 +1,8 @@
 .DEFAULT_GOAL := help
-PROJECT=austral-ui
+AUSTRAL_DATA_DIR=./austral-data-sample
+PROJECT=austral-lui
 VENV_DIR=${PROJECT}-env
-PYTHON := python3.11
+PYTHON := python3.10
 PIP := pip
 TESTDIR := tests
 PYTEST := pytest -vv
@@ -23,7 +24,7 @@ install: venv install-pypr2 install-asl install-austral-data-sample
 
 .PHONY: install-pypr2
 install-pypr2:
-	@echo "Installing pypr2"
+	@echo "Installing pypr2 in the virtual environment ..."
 	@git clone git@gitlab-ssh.univ-lille.fr:loa/photons/pypr2.git	
 	@cd pypr2 && make cleanall && make
 	@echo "pypr2 successfully installed"

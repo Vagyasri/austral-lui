@@ -5,3 +5,5 @@ austral-scientific-layer/
 
 # virtualenv
 *env*/
+
+.DS_Store

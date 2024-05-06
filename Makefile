@@ -3,7 +3,7 @@ AUSTRAL_DATA_DIR = ./austral-data-sample
 PROJECT = austral-lui
 VENV_DIR = ${PROJECT}-env
 PYTHON := python3
-VENV_BIN = $(VENV_DIR)/bin/
+VENV_BIN = $(VENV_DIR)/bin
 VENV_PYTHON = $(VENV_BIN)/python
 PIP := $(VENV_BIN)/pip
 PYTEST := $(VENV_BIN)/pytest -vv
@@ -26,20 +26,22 @@ help:
 	@echo "make cleanall|clean-all: remove the virtual environment and the temporary files"
 
 # .PHONY: install
-# install: venv install-pypr2 install-asl install-austral-data-sample
+# install: install dist/*.whl
 
 .PHONY: install-pypr2
 install-pypr2:
-	@echo "Installing pypr2 in the virtual environment ..."
+	@echo "Installing pypr2 in the virtual environment $(VENV_DIR) ..."
 	@git clone git@gitlab-ssh.univ-lille.fr:loa/photons/pypr2.git
-	@. $(VENV_DIR)/bin/activate && cd pypr2 && make && make install
+	@cd pypr2 && make
+	@$(PIP) install pypr2/dist/*.whl
 	@echo "pypr2 successfully installed"
 
 .PHONY: install-asl install-austral-sci-layer install-austral-scientific-layer install-lilas-web-processing
 install-asl install-austral-sci-layer install-austral-scientific-layer install-lilas-web-processing:
-	@echo "Installing austral-scientific-layer in the virtual environment ..."
+	@echo "Installing austral-scientific-layer in the virtual environment $(VENV_DIR) ..."
 	@git clone git@gitlab-ssh.univ-lille.fr:loa/agora/lilas-web-processing.git austral-scientific-layer
-	@. $(VENV_DIR)/bin/activate && cd austral-scientific-layer && make && make install
+	@cd austral-scientific-layer && make
+	@$(PIP) install austral-scientific-layer/dist/*.whl
 	@echo "austral-scientific-layer successfully installed"
 
 .PHONY: install-austral-data-sample install-ads
@@ -53,7 +55,10 @@ venv austral-ui-env:
 	@$(PYTHON) -m venv $(VENV_DIR) && $(PIP) install --upgrade pip && $(PIP) install -r requirements.txt
 
 .PHONY: install-dev
-install-dev: venv install-pypr2 install-asl install-ads
+install-dev: venv install-pypr2 install-asl install-austral-data-sample
+
+.PHONY: install-pkg
+install-pkg: venv install-pypr2 install-asl
 
 .PHONY: pytest
 pytest:

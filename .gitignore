@@ -1,0 +1,7 @@
+# Dependency directories
+pypr2/
+austral-data-sample/
+austral-scientific-layer/
+
+# virtualenv
+*env*/

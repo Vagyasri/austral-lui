@@ -1,7 +1,7 @@
 import tkinter as tk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
+from licel_treatment import get_data
 def txt_to_lists(content):
     T0, T1 = [], []
     for line in content.split('\n'):
@@ -15,13 +15,25 @@ def new_file():
         widget.destroy()
 """
 def open_file():
-    file_path = tk.filedialog.askopenfilename()
-    with open(file_path, 'r') as file:
-        content = file.read()
-    x, y = txt_to_lists(content)
-    draw_chart(x, y)
+    file_paths = tk.filedialog.askopenfilenames()
+    for file_path in file_paths:
+        file_name = file_path.split('/')[-1]
+        paths[file_name] = file_path
+        file_listbox.insert(tk.END, file_path.split('/')[-1])
+        
+def load_files():
+    ax, fig = draw_chart_p1()
+    selected_files = file_listbox.curselection()
+    for file_index in selected_files:
+        file_name = file_listbox.get(file_index)
+        with open(paths[file_name], 'r') as file:
+            content = file.read()
+        x, y = txt_to_lists(content)
+        # Draw a line plot in the subplot
+        ax.plot(x, y)
+    draw_chart_p2(ax, fig)
     
-    file_listbox.insert(tk.END, file_path.split('/')[-1])
+
 
 def save_file():
     pass
@@ -35,7 +47,7 @@ def save_file():
 def about():
     tk.messagebox.showinfo("About", "This is a simple Tkinter GUI")
 """
-def draw_chart(x, y):
+def draw_chart_p1():
     # Create a new Tkinter Toplevel widget
     for widget in chart_frame.winfo_children():
         widget.destroy()
@@ -51,14 +63,12 @@ def draw_chart(x, y):
 
     # Create a matplotlib figure with the same size as the Canvas
     fig = plt.Figure(figsize=(figure_width, figure_height))
-
     # Add a subplot to the figure
     ax = fig.add_subplot(111)
-
-    # Draw a line plot in the subplot
-    ax.plot(x, y)
+    return ax, fig
     #ax.set_yscale('linear')
-    
+     
+def draw_chart_p2(ax, fig):
     # Remove margins
     fig.tight_layout()
 
@@ -67,11 +77,13 @@ def draw_chart(x, y):
     canvas.draw()
     canvas.get_tk_widget().pack(fill='both', expand=True)
     
+paths = {} 
 
 
 
 root = tk.Tk()
 root.title("Austral GUI")
+root.config(bg='blanched almond')
 
 root.grid_rowconfigure(0, weight=0)
 root.grid_rowconfigure(1, weight=1)
@@ -90,21 +102,25 @@ chart_frame.grid(column=1, columnspan=2, row=1, sticky='nsew')
 
 # Create a frame for the file list
 file_list_frame = tk.Frame(root)
-file_list_frame.grid(row=0, column=0, rowspan=3, sticky='nsew')
+file_list_frame.grid(row=0, column=0, rowspan=2, sticky='nsew')
 
 # Create a Listbox in the file_list_frame
-file_listbox = tk.Listbox(file_list_frame)
+file_listbox = tk.Listbox(file_list_frame, selectmode=tk.MULTIPLE)
 file_listbox.pack(fill='both', expand=True)
 
+# Create a Load button
+load_button = tk.Button(root, text="Load", command=load_files)
+load_button.grid(row=2, column=0, sticky='nsew', padx=10, pady=10)
+
 # Create a label for the title
-title_label = tk.Label(root, text="Title")
+title_label = tk.Label(root, background='blanched almond', foreground='blue', text="Data from files", font=('Times New Roman', 12))
 title_label.grid(row=0, column=2, sticky='nsew', padx=10, pady=10)
 # Create a label for the x-axis
-x_label = tk.Label(root, text="Abscisse")
+x_label = tk.Label(root, background='blanched almond', font=('Times New Roman', 12), text="distance (m)")
 x_label.grid(row=2, column=1, columnspan=2, sticky='nsew', padx=10, pady=10)
 
 # Create a label for the y-axis and rotate it
-y_label = tk.Label(root, text="Ordonnées", width=20)
+y_label = tk.Label(root, background='blanched almond', font=('Times New Roman', 12), text="Lidar Signal (mV)", width=20)
 y_label.grid(row=0, column=1, sticky='nsew', padx=10, pady=10)
 
 # Define the size of the figure in inches
@@ -138,6 +154,8 @@ file_menu.add_command(label="Exit", command=root.destroy)
 
 
 root.mainloop()
+
+
 
 
 

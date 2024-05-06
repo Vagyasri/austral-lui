@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import matplotlib
+matplotlib.use('Agg')
 import tkinter as tk
 from tkinter import filedialog, Text, messagebox
 import matplotlib.pyplot as plt

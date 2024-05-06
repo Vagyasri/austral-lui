@@ -44,7 +44,7 @@ install-asl install-austral-sci-layer install-austral-scientific-layer install-l
 	@$(PIP) install austral-scientific-layer/dist/*.whl
 	@echo "austral-scientific-layer successfully installed"
 
-.PHONY: install-austral-data-sample install-ads
+.PHONY: install-austral-data-sample install-ads install-samples
 install-austral-data-sample install-ads:
 	@echo "Installing austral-data-sample"
 	@git clone git@gitlab-ssh.univ-lille.fr:loa/agora/austral-data-sample.git $(AUSTRAL_DATA_DIR)

@@ -2,84 +2,83 @@ import tkinter as tk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from licel_treatment import get_data
-def txt_to_lists(content):
-    T0, T1 = [], []
-    for line in content.split('\n'):
-        line0 = line.split()
-        T0.append(float(line0[0]))
-        T1.append(float(line0[1]))
-    return T0, T1
-"""    
-def new_file():
-    for widget in chart_frame.winfo_children():
-        widget.destroy()
-"""
+
+def set_config_directory():
+    global config_dir
+    config_dir = tk.filedialog.askdirectory()
+    
+def get_color(channel):
+    waveln = int(channel.split('.')[0])
+    if waveln < 400:
+        return '#A600D5'
+    elif waveln == 408:
+        return '#8108FF'
+    elif waveln == 460:
+        return '#0051FF'
+    elif 529 < waveln < 533:
+        return '#BCFF00'
+    else:
+        return '#AF0000'
+
 def open_file():
     file_paths = tk.filedialog.askopenfilenames()
     for file_path in file_paths:
         file_name = file_path.split('/')[-1]
-        paths[file_name] = file_path
-        file_listbox.insert(tk.END, file_path.split('/')[-1])
-        
+        if file_name not in paths:
+            paths[file_name] = file_path
+            file_listbox.insert(tk.END, file_path.split('/')[-1])
+
 def load_files():
-    ax, fig = draw_chart_p1()
     selected_files = file_listbox.curselection()
-    for file_index in selected_files:
-        file_name = file_listbox.get(file_index)
-        with open(paths[file_name], 'r') as file:
-            content = file.read()
-        x, y = txt_to_lists(content)
-        # Draw a line plot in the subplot
-        ax.plot(x, y)
-    draw_chart_p2(ax, fig)
+    for widget in check_frame.winfo_children():
+        widget.destroy()
+    if selected_files != ():
+        global data
+        data |= get_data([paths[file_listbox.get(file_index)] for file_index in selected_files], config_dir, shift.get(), bg_noise.get(), e_noise.get(), deadtime.get())
     
+        for channel in data:
+            var = tk.IntVar()
+            check = tk.Checkbutton(check_frame, text=channel, variable=var, command=draw_chart, bg='blanched almond')
+            check.pack(side='top', anchor='w')
+            check_vars[channel] = var
 
 
-def save_file():
-    pass
-    """
-    file_path = tk.filedialog.asksaveasfilename()
-    with open(file_path, 'w') as file:
-        content = text.get("1.0", tk.END)
-        file.write(content)
-    """
-"""
-def about():
-    tk.messagebox.showinfo("About", "This is a simple Tkinter GUI")
-"""
-def draw_chart_p1():
-    # Create a new Tkinter Toplevel widget
+
+def draw_chart():
+    # Clear the chart
     for widget in chart_frame.winfo_children():
         widget.destroy()
-
+    
     # Get the size of the Canvas in pixels
     canvas_width = chart_frame.winfo_width()
     canvas_height = chart_frame.winfo_height()
-
+    
     # Convert the size from pixels to inches
     dpi = root.winfo_fpixels('1i')  # pixels per inch
     figure_width = canvas_width / dpi -0.2
     figure_height = canvas_height / dpi -0.2
-
-    # Create a matplotlib figure with the same size as the Canvas
+    
     fig = plt.Figure(figsize=(figure_width, figure_height))
-    # Add a subplot to the figure
     ax = fig.add_subplot(111)
-    return ax, fig
-    #ax.set_yscale('linear')
-     
-def draw_chart_p2(ax, fig):
-    # Remove margins
-    fig.tight_layout()
+    
+    
+    # Draw a line plot for each selected channel
+    for channel in check_vars:
+        if check_vars[channel].get():
+            x, y = data[channel]
+            ax.plot(x, y, label=channel, color=get_color(channel))
 
-    # Create a FigureCanvasTkAgg widget and add it to the pie_chart_frame
+    ax.legend()
+    fig.tight_layout()
+    # Create a FigureCanvasTkAgg widget and add it to the frame
     canvas = FigureCanvasTkAgg(fig, master=chart_frame)
     canvas.draw()
     canvas.get_tk_widget().pack(fill='both', expand=True)
-    
+  
 paths = {} 
-
-
+data = {}
+check_vars = {}
+config_dir = r'\\wsl.localhost\Ubuntu-22.04\home\neuts\project\austral-data-sample\instruments\lilas\private\config\lidar'
 
 root = tk.Tk()
 root.title("Austral GUI")
@@ -88,29 +87,31 @@ root.config(bg='blanched almond')
 root.grid_rowconfigure(0, weight=0)
 root.grid_rowconfigure(1, weight=1)
 root.grid_rowconfigure(2, weight=0)
+root.grid_rowconfigure(3, weight=0)
 root.grid_columnconfigure(0, weight=0)
 root.grid_columnconfigure(1, weight=0)
 root.grid_columnconfigure(2, weight=1)
+root.grid_columnconfigure(3, weight=0)
 
 
 # Create a menu bar
 menubar = tk.Menu(root)
 root.config(menu=menubar)
 
-chart_frame = tk.Frame(root)
+chart_frame = tk.Frame(root, bg='blanched almond')
 chart_frame.grid(column=1, columnspan=2, row=1, sticky='nsew')
 
 # Create a frame for the file list
-file_list_frame = tk.Frame(root)
-file_list_frame.grid(row=0, column=0, rowspan=2, sticky='nsew')
+file_list_frame = tk.Frame(root, bg='blanched almond')
+file_list_frame.grid(row=0, column=0, rowspan=3, sticky='nsew')
 
 # Create a Listbox in the file_list_frame
 file_listbox = tk.Listbox(file_list_frame, selectmode=tk.MULTIPLE)
 file_listbox.pack(fill='both', expand=True)
 
 # Create a Load button
-load_button = tk.Button(root, text="Load", command=load_files)
-load_button.grid(row=2, column=0, sticky='nsew', padx=10, pady=10)
+load_button = tk.Button(root, text="Load", command=load_files, bg='white')
+load_button.grid(row=3, column=0, sticky='nsew', padx=10, pady=10)
 
 # Create a label for the title
 title_label = tk.Label(root, background='blanched almond', foreground='blue', text="Data from files", font=('Times New Roman', 12))
@@ -136,28 +137,34 @@ canvas_height = int(dpi * figure_height)
 blank_canvas = tk.Canvas(chart_frame, width=canvas_width, height=canvas_height, bg='blanched almond')
 blank_canvas.pack()
 
+# Create a frame for the Checkbuttons
+check_frame = tk.Frame(root, bg='blanched almond')
+check_frame.grid(row=0, column=3, rowspan=3, sticky='nsew')
 
 
 # Create a File menu
 file_menu = tk.Menu(menubar)
 menubar.add_cascade(label="File", menu=file_menu)
-#file_menu.add_command(label="New", command=new_file)
-file_menu.add_command(label="Open", command=open_file)
-file_menu.add_command(label="Save", command=save_file)
 
+file_menu.add_command(label="Open", command=open_file)
 file_menu.add_command(label="Exit", command=root.destroy)
 
-# Create a Help menu
-#help_menu = tk.Menu(menubar)
-#menubar.add_cascade(label="Help", menu=help_menu)
-#help_menu.add_command(label="About", command=about)
+
+# Create a Config menu
+config_menu = tk.Menu(menubar)
+menubar.add_cascade(label="Config", menu=config_menu)
+
+bg_noise = tk.IntVar()
+e_noise = tk.IntVar()
+shift = tk.IntVar()
+deadtime = tk.IntVar()
+config_menu.add_command(label="Set config directory", command=set_config_directory)
+config_menu.add_checkbutton(label="E-Noise", variable=e_noise, command=load_files)
+config_menu.add_checkbutton(label="Shift", variable=shift, command=load_files)
+config_menu.add_checkbutton(label="Background Noise", variable=bg_noise, command=load_files)
+config_menu.add_checkbutton(label="Deadtime", variable=deadtime, command=load_files)
 
 
 root.mainloop()
-
-
-
-
-
 
 

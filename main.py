@@ -15,19 +15,26 @@ class GUI:
             if file_name not in self.paths:
                 self.paths[file_name] = file_path
                 self.file_listbox.insert(tk.END, file_path.split('/')[-1])
-            
-    def load_files(self):
+    
+    def set_channel_box_vars(self):
+        for channel in self.data:
+            var = tk.IntVar()
+            check = tk.Checkbutton(self.check_frame, text=channel, variable=var, command=self.draw_chart, bg=self.bg)
+            check.pack(side='top', anchor='w')
+            self.check_vars[channel] = var
+
+    def set_data_with_selected_files(self):
         selected_files = self.file_listbox.curselection()
-        for widget in self.check_frame.winfo_children():
-                widget.destroy()
         if selected_files != ():
-            self.data |= get_data([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), not self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
+            self.data = get_data([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), not self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
+    
+
+    def load_files(self):
+        for widget in self.chart_frame.winfo_children():
+            widget.destroy()
+        self.set_data_with_selected_files()
+        self.set_channel_box_vars()
         
-            for channel in self.data:
-                var = tk.IntVar()
-                check = tk.Checkbutton(self.check_frame, text=channel, variable=var, command=self.draw_chart, bg=self.bg)
-                check.pack(side='top', anchor='w')
-                self.check_vars[channel] = var
     
     @staticmethod
     def get_color(channel):
@@ -117,7 +124,7 @@ class GUI:
         self.bg = 'blanched almond'
         self.figure_width = 5  # in inches
         self.figure_height = 5
-        self.curve_type = 'log'
+        self.curve_type = 'log' #linear, log, etc
 
         self.dpi = self.root.winfo_fpixels('1i')  # pixels per inch
         self.canvas_width = int(self.dpi * self.figure_width)

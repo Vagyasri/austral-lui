@@ -1,6 +1,6 @@
 import tkinter as tk
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from licel_treatment import get_data
 
 class GUI:
@@ -15,7 +15,11 @@ class GUI:
             if file_name not in self.paths:
                 self.paths[file_name] = file_path
                 self.file_listbox.insert(tk.END, file_path.split('/')[-1])
-    
+    @staticmethod
+    def clean(object):
+        for widget in object.winfo_children():
+            widget.destroy()
+
     def set_channel_box_vars(self):
         for channel in self.data:
             var = tk.IntVar()
@@ -29,9 +33,9 @@ class GUI:
             self.data = get_data([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), not self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
     
 
-    def load_files(self):
-        for widget in self.chart_frame.winfo_children():
-            widget.destroy()
+    def on_load(self):
+        GUI.clean(self.chart_frame)
+        GUI.clean(self.check_frame)
         self.set_data_with_selected_files()
         self.set_channel_box_vars()
         
@@ -49,29 +53,40 @@ class GUI:
             return '#BCFF00'
         else:
             return '#AF0000'
-        
-    def draw_chart(self):
-        for widget in self.chart_frame.winfo_children():
-            widget.destroy()
-        
+    
+    def get_figure_size(self):
         frame_width = self.chart_frame.winfo_width()
         frame_height = self.chart_frame.winfo_height()
-        figure_width, figure_height = frame_width / self.dpi - 0.2, frame_height / self.dpi - 0.2
-        fig = plt.Figure(figsize=(figure_width, figure_height))
+        figure_width, figure_height = frame_width / self.dpi -0.2, (frame_height - 50) / self.dpi -0.1
+        return figure_width, figure_height
+
+    def get_figure_with_ploted_data(self):
+        fig = plt.Figure(figsize=self.get_figure_size())
         ax = fig.add_subplot(111)
-        
         for channel in self.check_vars:
             if self.check_vars[channel].get():
                 x, y = self.data[channel]
                 ax.plot(x, y, label=channel, color=GUI.get_color(channel))
+        ax.set_xlabel(fontdict=self.plot_label_font, xlabel="distance (m)")
+        ax.set_ylabel(fontdict=self.plot_label_font, ylabel="Lidar Signal (mV)")
+        ax.set_title(fontdict=self.plot_label_font, label="Lidar Profile")
         ax.set_yscale(self.curve_type)
         ax.legend()
         fig.tight_layout()
-        # Create a FigureCanvasTkAgg widget and add it to the frame
+        return fig
+    
+    def create_canvas_with_chart(self, fig):
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill='both', expand=True)
-        
+        toolbar = NavigationToolbar2Tk(canvas, self.chart_frame)
+        toolbar.update()
+    
+    def draw_chart(self):
+        GUI.clean(self.chart_frame)
+        fig = self.get_figure_with_ploted_data()
+        self.create_canvas_with_chart(fig)
+                
     def configure_grid(self):
         self.root.grid_rowconfigure(0, weight=0)
         self.root.grid_rowconfigure(1, weight=1)
@@ -103,10 +118,10 @@ class GUI:
         self.menubar.add_cascade(label="Config", menu=self.config_menu)
         ##########################
         self.config_menu.add_command(label="Set config directory", command=self.set_config_directory)
-        self.config_menu.add_checkbutton(label="E-Noise", variable=self.e_noise, command=self.load_files)
-        self.config_menu.add_checkbutton(label="Shift", variable=self.shift, command=self.load_files)
-        self.config_menu.add_checkbutton(label="Background Noise", variable=self.bg_noise, command=self.load_files)
-        self.config_menu.add_checkbutton(label="Deadtime", variable=self.deadtime, command=self.load_files)
+        self.config_menu.add_checkbutton(label="E-Noise", variable=self.e_noise, command=self.on_load)
+        self.config_menu.add_checkbutton(label="Shift", variable=self.shift, command=self.on_load)
+        self.config_menu.add_checkbutton(label="Background Noise", variable=self.bg_noise, command=self.on_load)
+        self.config_menu.add_checkbutton(label="Deadtime", variable=self.deadtime, command=self.on_load)
         
     def configure_root(self):
         self.root.title("Austral GUI")
@@ -121,10 +136,11 @@ class GUI:
         self.paths = {} 
         self.check_vars = {}
         
-        self.bg = 'blanched almond'
+        self.bg = '#de755e'
         self.figure_width = 5  # in inches
         self.figure_height = 5
         self.curve_type = 'log' #linear, log, etc
+        self.plot_label_font = {'family': 'serif', 'color': 'black', 'weight': 'normal', 'size': 12}
 
         self.dpi = self.root.winfo_fpixels('1i')  # pixels per inch
         self.canvas_width = int(self.dpi * self.figure_width)
@@ -140,7 +156,7 @@ class GUI:
         self.chart_frame = tk.Frame(self.root, bg=self.bg)
         self.file_list_frame = tk.Frame(self.root, bg=self.bg)
         self.file_listbox = tk.Listbox(self.file_list_frame, selectmode=tk.MULTIPLE)
-        self.load_button = tk.Button(self.root, text="Load", command=self.load_files, bg='white')
+        self.load_button = tk.Button(self.root, text="Load", command=self.on_load, bg='white')
         self.title_label = tk.Label(self.root, background=self.bg, foreground='blue', text="Data from files", font=('Times New Roman', 12))
         self.x_label = tk.Label(self.root, background=self.bg, font=('Times New Roman', 12), text="distance (m)")
         self.y_label = tk.Label(self.root, background=self.bg, font=('Times New Roman', 12), text="Lidar Signal (mV)", width=20)

@@ -9,7 +9,7 @@ class GUI:
         self.config_dir = tk.filedialog.askdirectory(initialdir=self.config_dir)
     
     def open_file(self):
-        file_paths = tk.filedialog.askopenfilenames()
+        file_paths = tk.filedialog.askopenfilenames(initialdir=r'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28')
         for file_path in file_paths:
             file_name = file_path.split('/')[-1]
             if file_name not in self.paths:
@@ -21,7 +21,7 @@ class GUI:
         for widget in self.check_frame.winfo_children():
                 widget.destroy()
         if selected_files != ():
-            self.data |= get_data([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get())
+            self.data |= get_data([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), not self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
         
             for channel in self.data:
                 var = tk.IntVar()
@@ -57,7 +57,7 @@ class GUI:
             if self.check_vars[channel].get():
                 x, y = self.data[channel]
                 ax.plot(x, y, label=channel, color=GUI.get_color(channel))
-
+        ax.set_yscale(self.curve_type)
         ax.legend()
         fig.tight_layout()
         # Create a FigureCanvasTkAgg widget and add it to the frame
@@ -96,10 +96,10 @@ class GUI:
         self.menubar.add_cascade(label="Config", menu=self.config_menu)
         ##########################
         self.config_menu.add_command(label="Set config directory", command=self.set_config_directory)
-        self.config_menu.add_checkbutton(label="Disable E-Noise", variable=self.e_noise, command=self.load_files)
-        self.config_menu.add_checkbutton(label="Disable Shift", variable=self.shift, command=self.load_files)
-        self.config_menu.add_checkbutton(label="Disable Background Noise", variable=self.bg_noise, command=self.load_files)
-        self.config_menu.add_checkbutton(label="Disable Deadtime", variable=self.deadtime, command=self.load_files)
+        self.config_menu.add_checkbutton(label="E-Noise", variable=self.e_noise, command=self.load_files)
+        self.config_menu.add_checkbutton(label="Shift", variable=self.shift, command=self.load_files)
+        self.config_menu.add_checkbutton(label="Background Noise", variable=self.bg_noise, command=self.load_files)
+        self.config_menu.add_checkbutton(label="Deadtime", variable=self.deadtime, command=self.load_files)
         
     def configure_root(self):
         self.root.title("Austral GUI")
@@ -110,13 +110,14 @@ class GUI:
         self.root = tk.Tk()
         
         self.data = {}
-        self.config_dir = r'\\wsl.localhost\Ubuntu-22.04\home\neuts\project\austral-data-sample\instruments\lilas\private\config\lidar'
+        self.config_dir = r'./austral-data-sample/instruments/lilas/private/config/lidar'
         self.paths = {} 
         self.check_vars = {}
         
         self.bg = 'blanched almond'
         self.figure_width = 5  # in inches
         self.figure_height = 5
+        self.curve_type = 'log'
 
         self.dpi = self.root.winfo_fpixels('1i')  # pixels per inch
         self.canvas_width = int(self.dpi * self.figure_width)
@@ -152,5 +153,3 @@ class GUI:
     
         
 gui = GUI()
-
-

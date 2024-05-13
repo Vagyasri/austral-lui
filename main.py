@@ -21,33 +21,6 @@ class GUI:
         for widget in object.winfo_children():
             widget.destroy()
 
-    def set_channel_box_vars(self):
-        for i in range(2):
-            for channel in (self.data, self.calibration_data)[i]:
-                var = tk.IntVar()
-                check = tk.Checkbutton(self.check_frames[i], text=channel, variable=var, command=lambda:self.draw_chart(i), bg=self.bg)
-                check.pack(side='top', anchor='w')
-                self.check_vars[i][channel] = var
-
-    def set_data_with_selected_files(self):
-        selected_files = self.file_listbox.curselection()
-        if selected_files != ():
-            self.data = get_data([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
-            self.calibration_data = get_calibration_data(self.data)
-        else:
-            self.data, self.calibration_data = {}, {}
-
-
-
-    def load_data(self):
-        for i in range(2):
-            GUI.clean(self.chart_frames[i])
-        self.set_data_with_selected_files()
-        self.set_channel_box_vars()
-    
-    def on_select(self, event):
-        self.load_data()
-
     @staticmethod
     def get_color(channel, i):
         if i:
@@ -65,14 +38,9 @@ class GUI:
         else:
             return '#AF0000'
     
-    def get_figure_size(self, i):
-        frame_width, frame_height = self.chart_frames[i].winfo_width(), self.chart_frames[i].winfo_height()
-        figure_width, figure_height = frame_width / self.dpi -0.2, (frame_height - 50) / self.dpi -0.1
-        return figure_width, figure_height
-    
     def get_figure_with_ploted_data(self, i):
         data = self.data, self.calibration_data
-        fig = plt.Figure(figsize=self.get_figure_size(i))
+        fig = plt.Figure()
         ax = fig.add_subplot(111)
         for channel in self.check_vars[i]:
             if self.check_vars[i][channel].get():
@@ -97,6 +65,41 @@ class GUI:
         GUI.clean(self.chart_frames[i])
         fig = self.get_figure_with_ploted_data(i)
         self.create_canvas_with_chart(fig, i)
+    
+    def draw0(self):
+        self.draw_chart(0)
+    def draw1(self):
+        self.draw_chart(1)
+
+    def set_channel_box_vars(self):
+        for i in range(2):
+            GUI.clean(self.check_frames[i])
+            for channel in (self.data, self.calibration_data)[i]:
+                var = tk.IntVar()
+                check = tk.Checkbutton(self.check_frames[i], text=channel, variable=var, command=(self.draw0, self.draw1)[i], bg=self.bg)
+                check.pack(side='top', anchor='w')
+                self.check_vars[i][channel] = var
+
+    def set_data_with_selected_files(self):
+        selected_files = self.file_listbox.curselection()
+        if selected_files != ():
+            self.data = get_data([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
+            self.calibration_data = get_calibration_data(self.data)
+        else:
+            self.data, self.calibration_data = {}, {}
+
+
+
+    def load_data(self):
+        for i in range(2):
+            GUI.clean(self.chart_frames[i])
+        self.set_data_with_selected_files()
+        self.set_channel_box_vars()
+    
+    def on_select(self, event):
+        self.load_data()
+
+ 
 
                 
     def configure_grid(self):
@@ -116,7 +119,6 @@ class GUI:
         for i in range(2):
             self.chart_frames[i].grid(column=0, row=1, sticky='nsew')
             self.title_labels[i].grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
-            self.canvas_blanks[i].grid()
             self.check_frames[i].grid(row=0, column=1, rowspan=2, sticky='nsew')
         self.file_list_frame.grid(row=1, column=0, sticky='nsew')
         self.file_listbox.pack(fill='both', expand=True)
@@ -139,6 +141,7 @@ class GUI:
         
     def configure_root(self):
         self.root.title("Austral GUI")
+        #self.root.geometry(f'{self.w}x{self.h}')
         self.root.config(bg=self.bg)
         self.root.config(menu=self.menubar)
     
@@ -163,6 +166,7 @@ class GUI:
         self.check_vars = ({}, {})
         
         self.bg = '#de755e'
+        self.w, self.h = 700, 500
         self.figure_width = 5  # in inches
         self.figure_height = 5
         self.curve_type = 'linear' #linear, log, etc
@@ -190,7 +194,6 @@ class GUI:
         self.load_button = tk.Button(self.root, text="Load", command=self.load_data, bg='white')
         self.title_labels = (tk.Label(self.tabs[0], text="Data from files", **self.label_style),
                              tk.Label(self.tabs[1], text="Calibration", **self.label_style))
-        self.canvas_blanks = tuple([tk.Canvas(chart_frame, width=self.canvas_width, height=self.canvas_height, bg=self.bg) for chart_frame in self.chart_frames])
         self.check_frames = tuple([tk.Frame(tab, bg=self.bg) for tab in self.tabs])
         self.file_menu = tk.Menu(self.menubar)
         self.config_menu = tk.Menu(self.menubar)

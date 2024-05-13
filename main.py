@@ -1,7 +1,8 @@
 import tkinter as tk
+from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from licel_treatment import get_data
+from licel_treatment import get_data, get_calibration_data
 
 class GUI:
     
@@ -30,15 +31,18 @@ class GUI:
     def set_data_with_selected_files(self):
         selected_files = self.file_listbox.curselection()
         if selected_files != ():
-            self.data = get_data([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), not self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
-    
+            self.data = get_data([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
+        else:
+            self.data={}
 
-    def on_load(self):
+    def on_select(self, event):
+        self.load_data()
+
+    def load_data(self):
         GUI.clean(self.chart_frame)
         GUI.clean(self.check_frame)
         self.set_data_with_selected_files()
         self.set_channel_box_vars()
-        
     
     @staticmethod
     def get_color(channel):
@@ -90,23 +94,26 @@ class GUI:
     def configure_grid(self):
         self.root.grid_rowconfigure(0, weight=0)
         self.root.grid_rowconfigure(1, weight=1)
-        self.root.grid_rowconfigure(2, weight=0)
-        self.root.grid_rowconfigure(3, weight=0)
         self.root.grid_columnconfigure(0, weight=0)
-        self.root.grid_columnconfigure(1, weight=0)
-        self.root.grid_columnconfigure(2, weight=1)
-        self.root.grid_columnconfigure(3, weight=0)
+        self.root.grid_columnconfigure(1, weight=1)
+        self.main_tab.grid_rowconfigure(0, weight=0)
+        self.main_tab.grid_rowconfigure(1, weight=1)
+        self.main_tab.grid_rowconfigure(2, weight=0)
+        self.main_tab.grid_columnconfigure(0, weight=0)
+        self.main_tab.grid_columnconfigure(1, weight=1)
+        self.main_tab.grid_columnconfigure(2, weight=0) 
     
     def place_elements(self):
-        self.chart_frame.grid(column=1, columnspan=2, row=1, sticky='nsew')
-        self.file_list_frame.grid(row=0, column=0, rowspan=3, sticky='nsew')
+        self.tabs.grid(row=0, column=1, rowspan = 2, sticky='nsew')
+        self.chart_frame.grid(column=0, columnspan=2, row=1, sticky='nsew')
+        self.file_list_frame.grid(row=1, column=0, sticky='nsew')
         self.file_listbox.pack(fill='both', expand=True)
-        self.load_button.grid(row=3, column=0, sticky='nsew', padx=10, pady=10)
-        self.title_label.grid(row=0, column=2, sticky='nsew', padx=10, pady=10)
-        self.x_label.grid(row=2, column=1, columnspan=2, sticky='nsew', padx=10, pady=10)
-        self.y_label.grid(row=0, column=1, sticky='nsew', padx=10, pady=10)
+        self.load_button.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
+        self.title_label.grid(row=0, column=1, sticky='nsew', padx=10, pady=10)
+        self.x_label.grid(row=2, column=0, columnspan=2, sticky='nsew', padx=10, pady=10)
+        self.y_label.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
         self.blank_canvas.pack()
-        self.check_frame.grid(row=0, column=3, rowspan=3, sticky='nsew')
+        self.check_frame.grid(row=0, column=2, rowspan=3, sticky='nsew')
         
     def configure_menubar(self):
         self.menubar.add_cascade(label="File", menu=self.file_menu)
@@ -118,16 +125,27 @@ class GUI:
         self.menubar.add_cascade(label="Config", menu=self.config_menu)
         ##########################
         self.config_menu.add_command(label="Set config directory", command=self.set_config_directory)
-        self.config_menu.add_checkbutton(label="E-Noise", variable=self.e_noise, command=self.on_load)
-        self.config_menu.add_checkbutton(label="Shift", variable=self.shift, command=self.on_load)
-        self.config_menu.add_checkbutton(label="Background Noise", variable=self.bg_noise, command=self.on_load)
-        self.config_menu.add_checkbutton(label="Deadtime", variable=self.deadtime, command=self.on_load)
+        self.config_menu.add_checkbutton(label="E-Noise", variable=self.e_noise, command=self.load_data)
+        self.config_menu.add_checkbutton(label="Shift", variable=self.shift, command=self.load_data)
+        self.config_menu.add_checkbutton(label="Background Noise", variable=self.bg_noise, command=self.load_data)
+        self.config_menu.add_checkbutton(label="Deadtime", variable=self.deadtime, command=self.load_data)
         
     def configure_root(self):
         self.root.title("Austral GUI")
         self.root.config(bg=self.bg)
         self.root.config(menu=self.menubar)
-        
+    
+    @staticmethod
+    def rien():
+        pass
+    
+    def toggle_log(self):
+        if self.curve_type == 'log':
+            self.curve_type = 'linear'
+        else:
+             self.curve_type = 'log'
+        self.load_data()
+
     def __init__(self):
         self.root = tk.Tk()
         
@@ -139,7 +157,7 @@ class GUI:
         self.bg = '#de755e'
         self.figure_width = 5  # in inches
         self.figure_height = 5
-        self.curve_type = 'log' #linear, log, etc
+        self.curve_type = 'linear' #linear, log, etc
         self.plot_label_font = {'family': 'serif', 'color': 'black', 'weight': 'normal', 'size': 12}
 
         self.dpi = self.root.winfo_fpixels('1i')  # pixels per inch
@@ -151,17 +169,22 @@ class GUI:
         self.shift = tk.IntVar()
         self.deadtime = tk.IntVar()
         
+        self.tabs = ttk.Notebook(self.root)
+        self.main_tab = ttk.Frame(self.tabs)
+        self.calibration_tab = ttk.Frame(self.tabs)
+        self.tabs.add(self.main_tab, text='Lidar Profiles')
+        self.tabs.add(self.calibration_tab, text='Calibration Depolarization')
         
         self.menubar = tk.Menu(self.root)
-        self.chart_frame = tk.Frame(self.root, bg=self.bg)
+        self.chart_frame = tk.Frame(self.main_tab, bg=self.bg)
         self.file_list_frame = tk.Frame(self.root, bg=self.bg)
         self.file_listbox = tk.Listbox(self.file_list_frame, selectmode=tk.MULTIPLE)
-        self.load_button = tk.Button(self.root, text="Load", command=self.on_load, bg='white')
-        self.title_label = tk.Label(self.root, background=self.bg, foreground='blue', text="Data from files", font=('Times New Roman', 12))
-        self.x_label = tk.Label(self.root, background=self.bg, font=('Times New Roman', 12), text="distance (m)")
-        self.y_label = tk.Label(self.root, background=self.bg, font=('Times New Roman', 12), text="Lidar Signal (mV)", width=20)
+        self.load_button = tk.Button(self.root, text="Load", command=self.toggle_log, bg='white')
+        self.title_label = tk.Label(self.main_tab, background=self.bg, foreground='blue', text="Data from files", font=('Times New Roman', 12))
+        self.x_label = tk.Label(self.main_tab, background=self.bg, font=('Times New Roman', 12), text="distance (m)")
+        self.y_label = tk.Label(self.main_tab, background=self.bg, font=('Times New Roman', 12), text="Lidar Signal (mV)", width=20)
         self.blank_canvas = tk.Canvas(self.chart_frame, width=self.canvas_width, height=self.canvas_height, bg=self.bg)
-        self.check_frame = tk.Frame(self.root, bg=self.bg)
+        self.check_frame = tk.Frame(self.main_tab, bg=self.bg)
         self.file_menu = tk.Menu(self.menubar)
         self.config_menu = tk.Menu(self.menubar)
 
@@ -170,7 +193,7 @@ class GUI:
         self.configure_root()
         self.place_elements()
         self.configure_menubar()
-        
+        self.file_listbox.bind('<<ListboxSelect>>', self.on_select)
         
         self.root.mainloop()
     

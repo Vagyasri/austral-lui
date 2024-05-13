@@ -75,7 +75,7 @@ def get_calibration_pairs(data):
             pass
     return calibration_pairs
 
-def get_calibration_data(data=get_data()):
+def get_calibration_data(data):
     return {Pr2Object.get_calibration_header(p): (data[s][0], [data[s][1][i] / data[p][1][i] for i in range(len(data[s][0]))]) for p, s in get_calibration_pairs(data)}
     
     

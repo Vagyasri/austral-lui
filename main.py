@@ -22,31 +22,38 @@ class GUI:
             widget.destroy()
 
     def set_channel_box_vars(self):
-        for channel in self.data:
-            var = tk.IntVar()
-            check = tk.Checkbutton(self.check_frame, text=channel, variable=var, command=self.draw_chart, bg=self.bg)
-            check.pack(side='top', anchor='w')
-            self.check_vars[channel] = var
+        for i in range(2):
+            for channel in (self.data, self.calibration_data)[i]:
+                var = tk.IntVar()
+                check = tk.Checkbutton(self.check_frames[i], text=channel, variable=var, command=lambda:self.draw_chart(i), bg=self.bg)
+                check.pack(side='top', anchor='w')
+                self.check_vars[i][channel] = var
 
     def set_data_with_selected_files(self):
         selected_files = self.file_listbox.curselection()
         if selected_files != ():
             self.data = get_data([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
+            self.calibration_data = get_calibration_data(self.data)
         else:
-            self.data={}
+            self.data, self.calibration_data = {}, {}
 
-    def on_select(self, event):
-        self.load_data()
+
 
     def load_data(self):
-        GUI.clean(self.chart_frame)
-        GUI.clean(self.check_frame)
+        for i in range(2):
+            GUI.clean(self.chart_frames[i])
         self.set_data_with_selected_files()
         self.set_channel_box_vars()
     
+    def on_select(self, event):
+        self.load_data()
+
     @staticmethod
-    def get_color(channel):
-        waveln = int(channel.split('.')[0])
+    def get_color(channel, i):
+        if i:
+            waveln = int(channel.split('A')[0].split('P')[0])
+        else:
+            waveln = int(channel.split('.')[0])
         if waveln < 400:
             return '#A600D5'
         elif waveln == 408:
@@ -58,62 +65,62 @@ class GUI:
         else:
             return '#AF0000'
     
-    def get_figure_size(self):
-        frame_width = self.chart_frame.winfo_width()
-        frame_height = self.chart_frame.winfo_height()
+    def get_figure_size(self, i):
+        frame_width, frame_height = self.chart_frames[i].winfo_width(), self.chart_frames[i].winfo_height()
         figure_width, figure_height = frame_width / self.dpi -0.2, (frame_height - 50) / self.dpi -0.1
         return figure_width, figure_height
-
-    def get_figure_with_ploted_data(self):
-        fig = plt.Figure(figsize=self.get_figure_size())
+    
+    def get_figure_with_ploted_data(self, i):
+        data = self.data, self.calibration_data
+        fig = plt.Figure(figsize=self.get_figure_size(i))
         ax = fig.add_subplot(111)
-        for channel in self.check_vars:
-            if self.check_vars[channel].get():
-                x, y = self.data[channel]
-                ax.plot(x, y, label=channel, color=GUI.get_color(channel))
-        ax.set_xlabel(fontdict=self.plot_label_font, xlabel="distance (m)")
-        ax.set_ylabel(fontdict=self.plot_label_font, ylabel="Lidar Signal (mV)")
-        ax.set_title(fontdict=self.plot_label_font, label="Lidar Profile")
+        for channel in self.check_vars[i]:
+            if self.check_vars[i][channel].get():
+                x, y = data[i][channel]
+                ax.plot(x, y, label=channel, color=GUI.get_color(channel, i))
+        ax.set_xlabel(fontdict=self.plot_label_font, xlabel="Distance (m)")
+        ax.set_ylabel(fontdict=self.plot_label_font, ylabel=("Lidar Signal (mV)", "δ* (-)")[i])
+        ax.set_title(fontdict=self.plot_label_font, label=("Lidar Profile", 'Calibration')[i])
         ax.set_yscale(self.curve_type)
         ax.legend()
         fig.tight_layout()
         return fig
     
-    def create_canvas_with_chart(self, fig):
-        canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
+    def create_canvas_with_chart(self, fig, i):
+        canvas = FigureCanvasTkAgg(fig, master=self.chart_frames[i])
         canvas.draw()
         canvas.get_tk_widget().pack(fill='both', expand=True)
-        toolbar = NavigationToolbar2Tk(canvas, self.chart_frame)
+        toolbar = NavigationToolbar2Tk(canvas, self.chart_frames[i])
         toolbar.update()
     
-    def draw_chart(self):
-        GUI.clean(self.chart_frame)
-        fig = self.get_figure_with_ploted_data()
-        self.create_canvas_with_chart(fig)
+    def draw_chart(self, i):
+        GUI.clean(self.chart_frames[i])
+        fig = self.get_figure_with_ploted_data(i)
+        self.create_canvas_with_chart(fig, i)
+
                 
     def configure_grid(self):
         self.root.grid_rowconfigure(0, weight=0)
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=0)
         self.root.grid_columnconfigure(1, weight=1)
-        self.main_tab.grid_rowconfigure(0, weight=0)
-        self.main_tab.grid_rowconfigure(1, weight=1)
-        self.main_tab.grid_rowconfigure(2, weight=0)
-        self.main_tab.grid_columnconfigure(0, weight=0)
-        self.main_tab.grid_columnconfigure(1, weight=1)
-        self.main_tab.grid_columnconfigure(2, weight=0) 
+        for i in range(2):
+            self.tabs[i].grid_rowconfigure(0, weight=0)
+            self.tabs[i].grid_rowconfigure(1, weight=1)
+            self.tabs[i].grid_rowconfigure(2, weight=0)
+            self.tabs[i].grid_columnconfigure(0, weight=1)
+            self.tabs[i].grid_columnconfigure(1, weight=0) 
     
     def place_elements(self):
-        self.tabs.grid(row=0, column=1, rowspan = 2, sticky='nsew')
-        self.chart_frame.grid(column=0, columnspan=2, row=1, sticky='nsew')
+        self.notebook.grid(row=0, column=1, rowspan = 2, sticky='nsew')
+        for i in range(2):
+            self.chart_frames[i].grid(column=0, row=1, sticky='nsew')
+            self.title_labels[i].grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
+            self.canvas_blanks[i].grid()
+            self.check_frames[i].grid(row=0, column=1, rowspan=2, sticky='nsew')
         self.file_list_frame.grid(row=1, column=0, sticky='nsew')
         self.file_listbox.pack(fill='both', expand=True)
         self.load_button.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
-        self.title_label.grid(row=0, column=1, sticky='nsew', padx=10, pady=10)
-        self.x_label.grid(row=2, column=0, columnspan=2, sticky='nsew', padx=10, pady=10)
-        self.y_label.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
-        self.blank_canvas.pack()
-        self.check_frame.grid(row=0, column=2, rowspan=3, sticky='nsew')
         
     def configure_menubar(self):
         self.menubar.add_cascade(label="File", menu=self.file_menu)
@@ -150,15 +157,17 @@ class GUI:
         self.root = tk.Tk()
         
         self.data = {}
+        self.calibration_data = {}
         self.config_dir = r'./austral-data-sample/instruments/lilas/private/config/lidar'
         self.paths = {} 
-        self.check_vars = {}
+        self.check_vars = ({}, {})
         
         self.bg = '#de755e'
         self.figure_width = 5  # in inches
         self.figure_height = 5
         self.curve_type = 'linear' #linear, log, etc
         self.plot_label_font = {'family': 'serif', 'color': 'black', 'weight': 'normal', 'size': 12}
+        self.label_style = {'background':self.bg, 'font':('Times New Roman', 12)}
 
         self.dpi = self.root.winfo_fpixels('1i')  # pixels per inch
         self.canvas_width = int(self.dpi * self.figure_width)
@@ -169,22 +178,20 @@ class GUI:
         self.shift = tk.IntVar()
         self.deadtime = tk.IntVar()
         
-        self.tabs = ttk.Notebook(self.root)
-        self.main_tab = ttk.Frame(self.tabs)
-        self.calibration_tab = ttk.Frame(self.tabs)
-        self.tabs.add(self.main_tab, text='Lidar Profiles')
-        self.tabs.add(self.calibration_tab, text='Calibration Depolarization')
+        self.notebook = ttk.Notebook(self.root)
+        self.tabs = (ttk.Frame(self.notebook), ttk.Frame(self.notebook))
+        self.notebook.add(self.tabs[0], text='Lidar Profiles')
+        self.notebook.add(self.tabs[1], text='Calibration Depolarization')
         
         self.menubar = tk.Menu(self.root)
-        self.chart_frame = tk.Frame(self.main_tab, bg=self.bg)
+        self.chart_frames = tuple([tk.Frame(tab, bg=self.bg) for tab in self.tabs])
         self.file_list_frame = tk.Frame(self.root, bg=self.bg)
         self.file_listbox = tk.Listbox(self.file_list_frame, selectmode=tk.MULTIPLE)
-        self.load_button = tk.Button(self.root, text="Load", command=self.toggle_log, bg='white')
-        self.title_label = tk.Label(self.main_tab, background=self.bg, foreground='blue', text="Data from files", font=('Times New Roman', 12))
-        self.x_label = tk.Label(self.main_tab, background=self.bg, font=('Times New Roman', 12), text="distance (m)")
-        self.y_label = tk.Label(self.main_tab, background=self.bg, font=('Times New Roman', 12), text="Lidar Signal (mV)", width=20)
-        self.blank_canvas = tk.Canvas(self.chart_frame, width=self.canvas_width, height=self.canvas_height, bg=self.bg)
-        self.check_frame = tk.Frame(self.main_tab, bg=self.bg)
+        self.load_button = tk.Button(self.root, text="Load", command=self.load_data, bg='white')
+        self.title_labels = (tk.Label(self.tabs[0], text="Data from files", **self.label_style),
+                             tk.Label(self.tabs[1], text="Calibration", **self.label_style))
+        self.canvas_blanks = tuple([tk.Canvas(chart_frame, width=self.canvas_width, height=self.canvas_height, bg=self.bg) for chart_frame in self.chart_frames])
+        self.check_frames = tuple([tk.Frame(tab, bg=self.bg) for tab in self.tabs])
         self.file_menu = tk.Menu(self.menubar)
         self.config_menu = tk.Menu(self.menubar)
 
@@ -193,7 +200,7 @@ class GUI:
         self.configure_root()
         self.place_elements()
         self.configure_menubar()
-        self.file_listbox.bind('<<ListboxSelect>>', self.on_select)
+        #self.file_listbox.bind('<<ListboxSelect>>', self.on_select)
         
         self.root.mainloop()
     

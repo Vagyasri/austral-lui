@@ -72,5 +72,15 @@ def get_calibration_pairs(data):
 
 def get_calibration_data(data):
     return {Pr2Object.get_calibration_header(p): (data[s][0], [data[s][1][i] / data[p][1][i] for i in range(len(data[s][0]))]) for p, s in get_calibration_pairs(data)}
-    
-    
+
+def get_polarization_data(paths, config_dir, shift, bg_noise, e_noise, deadtime):
+    all_data = []
+    for path in paths:
+        all_data.append(get_calibration_data(get_data(path, config_dir, shift, bg_noise, e_noise, deadtime)))
+    polar_data = {}
+    for chan in all_data[0]:
+        if chan in all_data[1]:
+            polar_data[chan] = [all_data[0][chan], all_data[1][chan]]
+            if len(all_data) == 3 and chan in all_data[2]:
+                polar_data[chan].append(all_data[2][chan])
+    return polar_data

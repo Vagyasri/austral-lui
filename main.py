@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from licel_treatment import get_data, get_data2, get_calibration_data
+from licel_treatment import get_data, get_data2, get_calibration_data, get_polarization_data
 
 class GUI:
     
@@ -45,63 +45,99 @@ class GUI:
         else:
             return '#AF0000'
     
-    def get_figure_with_ploted_data(self, i):
-        data = self.data, self.calibration_data
+    def get_new_fig(self):
         fig = plt.Figure()
+        fig.tight_layout()
         ax = fig.add_subplot(111)
-        for channel in self.check_vars[i]:
-            if self.check_vars[i][channel].get():
-                x, y = data[i][channel]
-                ax.plot(x, y, label=channel, color=GUI.get_color(channel, i))
-        ax.set_xlabel(fontdict=self.plot_label_font, xlabel="Distance (m)")
-        ax.set_ylabel(fontdict=self.plot_label_font, ylabel=("Lidar Signal (mV)", "δ* (-)")[i])
-        ax.set_title(fontdict=self.plot_label_font, label=("Lidar Profile", 'Calibration')[i])
+        return fig, ax
+    
+    def configure_ax(self, ax, xlab, ylab, tit):
+        ax.set_xlabel(fontdict=self.plot_label_font, xlabel=xlab)   
+        ax.set_ylabel(fontdict=self.plot_label_font, ylabel=ylab)
+        ax.set_title(fontdict=self.plot_label_font, label=tit)  
         ax.set_yscale(self.curve_type)
         ax.legend()
-        fig.tight_layout()
+        return ax
+    
+    def get_main_figure_with_ploted_data(self):
+        fig, ax = self.get_new_fig()
+        for channel in self.check_vars:
+            if self.check_vars[channel].get():
+                x, y = self.data[channel]
+                ax.plot(x, y, label=channel)
+        ax = self.configure_ax(ax, "Distance (m)", "Lidar Signal (mV)", "Lidar Profile")
         return fig
     
+    def get_calibration_figure_with_ploted_data(self):
+        fig, ax = self.get_new_fig()
+        channel = self.selected_chan.get()
+        for i, T in enumerate(self.calibration_data[channel]):
+            x, y = T
+            ax.plot(x, y, label=('+45', '-45', '0')[i])
+        ax = self.configure_ax(ax, "Distance (m)", "δ* (-)", "Calibration")
+        return fig
+
     def create_canvas_with_chart(self, fig, i):
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frames[i])
         canvas.draw()
         canvas.get_tk_widget().pack(fill='both', expand=True)
         toolbar = NavigationToolbar2Tk(canvas, self.chart_frames[i])
         toolbar.update()
-    
-    def draw_chart(self, i):
-        GUI.clean(self.chart_frames[i])
-        fig = self.get_figure_with_ploted_data(i)
-        self.create_canvas_with_chart(fig, i)
-    
-    def draw0(self):
-        self.draw_chart(0)
-    def draw1(self):
-        self.draw_chart(1)
 
+    def plot_main_data(self):
+        GUI.clean(self.chart_frames[0])
+        fig = self.get_main_figure_with_ploted_data()
+        self.create_canvas_with_chart(fig, 0)
+
+    def plot_calibration_data(self, event):
+        GUI.clean(self.chart_frames[1])
+        fig = self.get_calibration_figure_with_ploted_data()
+        self.create_canvas_with_chart(fig, 1)
+    
     def set_channel_box_vars(self):
-        for i in range(2):
-            GUI.clean(self.check_frames[i])
-            for channel in (self.data, self.calibration_data)[i]:
-                var = tk.IntVar()
-                check = tk.Checkbutton(self.check_frames[i], text=channel, variable=var, command=(self.draw0, self.draw1)[i], bg=self.bg)
-                check.pack(side='top', anchor='w')
-                self.check_vars[i][channel] = var
+        GUI.clean(self.check_frame)
+        for channel in (self.data, self.calibration_data)[0]:
+            var = tk.IntVar()
+            check = tk.Checkbutton(self.check_frame, text=channel, variable=var, command=self.plot_main_data, bg=self.bg)
+            check.pack(side='top', anchor='w')
+            self.check_vars[channel] = var
+    
+    def set_licel_pull_down_menu(self):
+        GUI.clean(self.licel_selection_frame)
+        self.selection_vars = []
+        selected_files = [self.file_listbox.get(file_index) for file_index in self.file_listbox.curselection()]
+        for i in range(3):
+            selected_option = tk.StringVar()
+            option_menu = tk.OptionMenu(self.licel_selection_frame, selected_option, *selected_files)
+            option_menu.grid(column=0, row=2*i+1, sticky='nsew')
+            self.selection_vars.append(selected_option)
+        self.set_button = tk.Button(self.licel_selection_frame, text="Set", command=self.set_channel_pull_down_menu, bg='white')
+        self.set_button.grid(column=0, row=6, sticky='nsew')
 
+    def set_channel_pull_down_menu(self):
+        GUI.clean(self.channel_selection_frame)
+        file_names = [var.get() for var in self.selection_vars]
+        if file_names[0] != '' and file_names[1] != '':
+            if file_names[2] == '':
+                file_names.pop()
+            file_names = [self.paths[file_name] for file_name in file_names]
+            self.calibration_data = get_polarization_data(file_names, self.config_dir, self.shift, self.bg_noise, self.e_noise, self.deadtime)
+            option_menu = tk.OptionMenu(self.channel_selection_frame, self.selected_chan, *self.calibration_data.keys(), command=self.plot_calibration_data)
+            option_menu.grid(column=0, row=1, sticky='nsew')
+    
     def set_data_with_selected_files(self):
         selected_files = self.file_listbox.curselection()
         if selected_files != ():
             self.data = get_data2([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
-            self.calibration_data = get_calibration_data(self.data)
         else:
-            self.data, self.calibration_data = {}, {}
-
-
+            self.data = {}
 
     def load_data(self):
         for i in range(2):
             GUI.clean(self.chart_frames[i])
         self.set_data_with_selected_files()
         self.set_channel_box_vars()
+        self.set_licel_pull_down_menu()
     
     def on_select(self, event):
         self.load_data()
@@ -114,19 +150,25 @@ class GUI:
         self.root.grid_columnconfigure(1, weight=1)
         self.root.grid_columnconfigure(2, weight=0)
         self.root.grid_columnconfigure(3, weight=0)
-        for i in range(2):
-            self.tabs[i].grid_rowconfigure(0, weight=0)
-            self.tabs[i].grid_rowconfigure(1, weight=1)
-            self.tabs[i].grid_rowconfigure(2, weight=0)
-            self.tabs[i].grid_columnconfigure(0, weight=1)
-            self.tabs[i].grid_columnconfigure(1, weight=0) 
+        self.tabs[0].grid_rowconfigure(0, weight=0)
+        self.tabs[0].grid_rowconfigure(1, weight=1)
+        self.tabs[0].grid_rowconfigure(2, weight=0)
+        self.tabs[0].grid_columnconfigure(0, weight=1)
+        self.tabs[0].grid_columnconfigure(1, weight=0) 
+        self.tabs[1].grid_rowconfigure(0, weight=0)
+        self.tabs[1].grid_rowconfigure(1, weight=1)
+        self.tabs[1].grid_rowconfigure(2, weight=0)
+        self.tabs[1].grid_columnconfigure(0, weight=1)
+        self.tabs[1].grid_columnconfigure(1, weight=0) 
     
     def place_elements(self):
         self.notebook.grid(row=0, column=1, rowspan = 4, sticky='nsew')
         for i in range(2):
             self.chart_frames[i].grid(column=0, row=1, sticky='nsew')
             self.title_labels[i].grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
-            self.check_frames[i].grid(row=0, column=1, rowspan=2, sticky='nsew')
+        self.check_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
+        self.licel_selection_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
+        self.channel_selection_frame.grid(row=2, column=1, sticky='nsew')
         self.file_list_frame.grid(row=1, column=0, sticky='nsew')
         self.file_listbox.pack(fill='both', expand=True)
         self.load_button.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
@@ -154,7 +196,7 @@ class GUI:
         self.root.config(bg=self.bg)
         self.root.config(menu=self.menubar)
         #self.root.state('zoomed') for windows
-        self.root.wm_attributes('-zoomed', True)  # This line maximizes the window.
+        #self.root.wm_attributes('-zoomed', True)  # This line maximizes the window.
 
 
     @staticmethod
@@ -175,7 +217,8 @@ class GUI:
         self.calibration_data = {}
         self.config_dir = r'./austral-data-sample/instruments/lilas/private/config/lidar'
         self.paths = {} 
-        self.check_vars = ({}, {})
+        self.check_vars = {}
+        self.selection_vars = []
         
         self.bg = '#de755e'
         self.w, self.h = 700, 500
@@ -192,7 +235,8 @@ class GUI:
         self.e_noise = tk.IntVar()
         self.shift = tk.IntVar()
         self.deadtime = tk.IntVar()
-        
+        self.selected_chan = tk.StringVar()
+
         self.notebook = ttk.Notebook(self.root)
         self.tabs = (ttk.Frame(self.notebook), ttk.Frame(self.notebook))
         self.notebook.add(self.tabs[0], text='Lidar Profiles')
@@ -205,9 +249,15 @@ class GUI:
         self.load_button = tk.Button(self.root, text="Load", command=self.load_data, bg='white')
         self.selectall_button = tk.Button(self.root, text="Select All", command=self.select_all, bg='white')
         self.unselectall_button = tk.Button(self.root, text="Unselect All", command=self.unselect_all, bg='white')
+        
         self.title_labels = (tk.Label(self.tabs[0], text="Data from files", **self.label_style),
                              tk.Label(self.tabs[1], text="Calibration", **self.label_style))
-        self.check_frames = tuple([tk.Frame(tab, bg=self.bg) for tab in self.tabs])
+        self.check_frame = tk.Frame(self.tabs[0], bg=self.bg)
+        self.licel_selection_frame = tk.Frame(self.tabs[1], bg=self.bg)
+        self.channel_selection_frame = tk.Frame(self.tabs[1], bg=self.bg)
+        
+        
+
         self.file_menu = tk.Menu(self.menubar)
         self.config_menu = tk.Menu(self.menubar)
 

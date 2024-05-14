@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from licel_treatment import get_data, get_calibration_data
+from licel_treatment import get_data, get_data2, get_calibration_data
 
 class GUI:
     
@@ -16,6 +16,13 @@ class GUI:
             if file_name not in self.paths:
                 self.paths[file_name] = file_path
                 self.file_listbox.insert(tk.END, file_path.split('/')[-1])
+
+    def select_all(self):
+        self.file_listbox.select_set(0, tk.END)
+
+    def unselect_all(self):
+        self.file_listbox.select_clear(0, tk.END)
+
     @staticmethod
     def clean(object):
         for widget in object.winfo_children():
@@ -83,7 +90,7 @@ class GUI:
     def set_data_with_selected_files(self):
         selected_files = self.file_listbox.curselection()
         if selected_files != ():
-            self.data = get_data([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
+            self.data = get_data2([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
             self.calibration_data = get_calibration_data(self.data)
         else:
             self.data, self.calibration_data = {}, {}
@@ -99,14 +106,14 @@ class GUI:
     def on_select(self, event):
         self.load_data()
 
- 
-
                 
     def configure_grid(self):
         self.root.grid_rowconfigure(0, weight=0)
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=0)
         self.root.grid_columnconfigure(1, weight=1)
+        self.root.grid_columnconfigure(2, weight=0)
+        self.root.grid_columnconfigure(3, weight=0)
         for i in range(2):
             self.tabs[i].grid_rowconfigure(0, weight=0)
             self.tabs[i].grid_rowconfigure(1, weight=1)
@@ -115,7 +122,7 @@ class GUI:
             self.tabs[i].grid_columnconfigure(1, weight=0) 
     
     def place_elements(self):
-        self.notebook.grid(row=0, column=1, rowspan = 2, sticky='nsew')
+        self.notebook.grid(row=0, column=1, rowspan = 4, sticky='nsew')
         for i in range(2):
             self.chart_frames[i].grid(column=0, row=1, sticky='nsew')
             self.title_labels[i].grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
@@ -123,6 +130,8 @@ class GUI:
         self.file_list_frame.grid(row=1, column=0, sticky='nsew')
         self.file_listbox.pack(fill='both', expand=True)
         self.load_button.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
+        self.selectall_button.grid(row=2, column=0, sticky='nsew', padx=10, pady=10)
+        self.unselectall_button.grid(row=3, column=0, sticky='nsew', padx=10, pady=10)
         
     def configure_menubar(self):
         self.menubar.add_cascade(label="File", menu=self.file_menu)
@@ -144,7 +153,10 @@ class GUI:
         #self.root.geometry(f'{self.w}x{self.h}')
         self.root.config(bg=self.bg)
         self.root.config(menu=self.menubar)
-    
+        #self.root.state('zoomed') for windows
+        self.root.wm_attributes('-zoomed', True)  # This line maximizes the window.
+
+
     @staticmethod
     def rien():
         pass
@@ -172,7 +184,6 @@ class GUI:
         self.curve_type = 'linear' #linear, log, etc
         self.plot_label_font = {'family': 'serif', 'color': 'black', 'weight': 'normal', 'size': 12}
         self.label_style = {'background':self.bg, 'font':('Times New Roman', 12)}
-
         self.dpi = self.root.winfo_fpixels('1i')  # pixels per inch
         self.canvas_width = int(self.dpi * self.figure_width)
         self.canvas_height = int(self.dpi * self.figure_height)
@@ -192,6 +203,8 @@ class GUI:
         self.file_list_frame = tk.Frame(self.root, bg=self.bg)
         self.file_listbox = tk.Listbox(self.file_list_frame, selectmode=tk.MULTIPLE)
         self.load_button = tk.Button(self.root, text="Load", command=self.load_data, bg='white')
+        self.selectall_button = tk.Button(self.root, text="Select All", command=self.select_all, bg='white')
+        self.unselectall_button = tk.Button(self.root, text="Unselect All", command=self.unselect_all, bg='white')
         self.title_labels = (tk.Label(self.tabs[0], text="Data from files", **self.label_style),
                              tk.Label(self.tabs[1], text="Calibration", **self.label_style))
         self.check_frames = tuple([tk.Frame(tab, bg=self.bg) for tab in self.tabs])

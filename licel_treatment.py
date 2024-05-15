@@ -17,7 +17,6 @@ def get_config(config_dir, shift, bg_noise, e_noise, deadtime):
     return config
 directory = r'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
 def get_data2(filenames = [directory + file_name for file_name in ['l2352800.005799', 'l2352800.015859', 'l2352800.025916', 'l2352800.035973']], config_dir=r'./austral-data-sample/instruments/lilas/private/config/lidar', shift=False, bg_noise=False, e_noise=False, deadtime=False):
-
     factory = Pr2ObjectFactory(filenames, config=get_config(config_dir, shift, bg_noise, e_noise, deadtime), return_type='dict')
     pr2_objects = factory.get_pr2_objects()
     #print(pr2_objects['355.p_AN'].get_concat_dataframe().columns)
@@ -33,9 +32,10 @@ def get_data2(filenames = [directory + file_name for file_name in ['l2352800.005
     return data
 
 def get_data(filenames = [directory + file_name for file_name in ['\l2352800.005799', '\l2352800.015859', '\l2352800.025916', '\l2352800.035973']], config_dir=r'\\wsl.localhost\Ubuntu-22.04\home\neuts\project\austral-data-sample\instruments\lilas\private\config\lidar', shift=False, bg_noise=False, e_noise=False, deadtime=False):
-
+    
     factory = Pr2ObjectFactory(filenames, config=get_config(config_dir, shift, bg_noise, e_noise, deadtime), return_type='dict')
     pr2_objects = factory.get_pr2_objects()
+    #print(pr2_objects['532.p_PC'].get_concat_dataframe()[['range', 'power']], pr2_objects['532.p_AN'].get_concat_dataframe()[['range', 'power']])
     """
     {channel:(range, power)}
     """
@@ -71,7 +71,7 @@ def get_calibration_pairs(data):
     return calibration_pairs
 
 def get_calibration_data(data):
-    return {Pr2Object.get_calibration_header(p): (data[s][0], [data[s][1][i] / data[p][1][i] for i in range(len(data[s][0]))]) for p, s in get_calibration_pairs(data)}
+    return {Pr2Object.get_calibration_header(p): (data[s][0], [data[p][1][i] / data[s][1][i] for i in range(min(len(data[s][0]), len(data[p][0])))]) for p, s in get_calibration_pairs(data)}
 
 def get_polarization_data(paths, config_dir, shift, bg_noise, e_noise, deadtime):
     all_data = []

@@ -3,14 +3,14 @@ from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from licel_treatment import get_data, get_data2, get_calibration_data, get_polarization_data
-
+import numpy as np
 class GUI:
     
     def set_config_directory(self):
         self.config_dir = tk.filedialog.askdirectory(initialdir=self.config_dir)
-    
+#r'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28')
     def open_file(self):
-        file_paths = tk.filedialog.askopenfilenames(initialdir=r'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28')
+        file_paths = tk.filedialog.askopenfilenames(initialdir=r'./austral-data-sample/instruments/lilas/private/calibration/20210112/200449')
         for file_path in file_paths:
             file_name = file_path.split('/')[-1]
             if file_name not in self.paths:
@@ -22,6 +22,22 @@ class GUI:
 
     def unselect_all(self):
         self.file_listbox.select_clear(0, tk.END)
+
+    def select_all_filters(self):
+        # Set all variables to True
+        self.e_noise.set(1)
+        self.shift.set(1)
+        self.bg_noise.set(1)
+        self.deadtime.set(1)
+        self.load_data()
+    
+    def unselect_all_filters(self):
+        # Set all variables to True
+        self.e_noise.set(0)
+        self.shift.set(0)
+        self.bg_noise.set(0)
+        self.deadtime.set(0)
+        self.load_data()
 
     @staticmethod
     def clean(object):
@@ -51,29 +67,55 @@ class GUI:
         ax = fig.add_subplot(111)
         return fig, ax
     
-    def configure_ax(self, ax, xlab, ylab, tit):
+    def configure_ax(self, ax, xlab, ylab, tit, there_is_data=True):
         ax.set_xlabel(fontdict=self.plot_label_font, xlabel=xlab)   
         ax.set_ylabel(fontdict=self.plot_label_font, ylabel=ylab)
         ax.set_title(fontdict=self.plot_label_font, label=tit)  
         ax.set_yscale(self.curve_type)
-        ax.legend()
+        if there_is_data:
+            ax.legend()
+            #ax.set_xlim(-1000, 5000)
         return ax
     
     def get_main_figure_with_ploted_data(self):
         fig, ax = self.get_new_fig()
+        there_is_data = 0
         for channel in self.check_vars:
             if self.check_vars[channel].get():
+                there_is_data += 1
                 x, y = self.data[channel]
                 ax.plot(x, y, label=channel)
-        ax = self.configure_ax(ax, "Distance (m)", "Lidar Signal (mV)", "Lidar Profile")
+        ax = self.configure_ax(ax, "Distance (m)", "Lidar Signal (mV)", "Lidar Profile", there_is_data)
         return fig
-    
+    @staticmethod
+    def make_data_regular(x, y):
+        if len(x) != len(y):
+            x.pop()
+
+    def find_ylim(self, x, y, y_minmax):
+        GUI.make_data_regular(x, y)
+        Y = y_minmax.copy()
+        mask = (np.array(x) <= self.calib_xlim)
+        y_range = np.array(y)[mask]
+        ymax, ymin = np.nanmax(y_range), np.nanmin(y_range)
+        if ymin < Y[0]:
+            Y[0] = ymin
+        if ymax > Y[1]:
+            Y[1] = ymax
+        return Y
+        
     def get_calibration_figure_with_ploted_data(self):
         fig, ax = self.get_new_fig()
+        ax.set_xlim(-100, self.calib_xlim)
         channel = self.selected_chan.get()
+        y_minmax = [1000, 0]
         for i, T in enumerate(self.calibration_data[channel]):
             x, y = T
+            y_minmax = self.find_ylim(x, y, y_minmax)
             ax.plot(x, y, label=('+45', '-45', '0')[i])
+        ax.set_xlim(-100, self.calib_xlim)
+        print(y_minmax)
+        ax.set_ylim(*y_minmax)
         ax = self.configure_ax(ax, "Distance (m)", "δ* (-)", "Calibration")
         return fig
 
@@ -104,31 +146,38 @@ class GUI:
     
     def set_licel_pull_down_menu(self):
         GUI.clean(self.licel_selection_frame)
+        GUI.clean(self.channel_selection_frame)
         self.selection_vars = []
-        selected_files = [self.file_listbox.get(file_index) for file_index in self.file_listbox.curselection()]
+        selected_files = self.file_listbox.get(0, tk.END)
+        txt_labels = ['Select file +45', 'Select file -45', 'Select file 0']
         for i in range(3):
             selected_option = tk.StringVar()
             option_menu = tk.OptionMenu(self.licel_selection_frame, selected_option, *selected_files)
+            label = tk.Label(self.licel_selection_frame, text=txt_labels[i], bg=self.bg, anchor='w')
             option_menu.grid(column=0, row=2*i+1, sticky='nsew')
+            label.grid(column=0, row=2*i, sticky='nsew')
             self.selection_vars.append(selected_option)
         self.set_button = tk.Button(self.licel_selection_frame, text="Set", command=self.set_channel_pull_down_menu, bg='white')
         self.set_button.grid(column=0, row=6, sticky='nsew')
 
     def set_channel_pull_down_menu(self):
         GUI.clean(self.channel_selection_frame)
+        self.selected_chan = tk.StringVar()
         file_names = [var.get() for var in self.selection_vars]
         if file_names[0] != '' and file_names[1] != '':
             if file_names[2] == '':
                 file_names.pop()
             file_names = [self.paths[file_name] for file_name in file_names]
-            self.calibration_data = get_polarization_data(file_names, self.config_dir, self.shift, self.bg_noise, self.e_noise, self.deadtime)
+            self.calibration_data = get_polarization_data(file_names, self.config_dir, not self.shift.get(), not self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
             option_menu = tk.OptionMenu(self.channel_selection_frame, self.selected_chan, *self.calibration_data.keys(), command=self.plot_calibration_data)
+            label = tk.Label(self.channel_selection_frame, text="Select channel", bg=self.bg, anchor='w')
             option_menu.grid(column=0, row=1, sticky='nsew')
-    
+            label.grid(column=0, row=0, sticky='nsew')
+
     def set_data_with_selected_files(self):
         selected_files = self.file_listbox.curselection()
         if selected_files != ():
-            self.data = get_data2([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
+            self.data = get_data2([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), not self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
         else:
             self.data = {}
 
@@ -156,15 +205,16 @@ class GUI:
         self.tabs[0].grid_columnconfigure(0, weight=1)
         self.tabs[0].grid_columnconfigure(1, weight=0) 
         self.tabs[1].grid_rowconfigure(0, weight=0)
-        self.tabs[1].grid_rowconfigure(1, weight=1)
-        self.tabs[1].grid_rowconfigure(2, weight=0)
+        self.tabs[1].grid_rowconfigure(1, weight=0)
+        self.tabs[1].grid_rowconfigure(2, weight=1)
         self.tabs[1].grid_columnconfigure(0, weight=1)
         self.tabs[1].grid_columnconfigure(1, weight=0) 
     
     def place_elements(self):
         self.notebook.grid(row=0, column=1, rowspan = 4, sticky='nsew')
+        self.chart_frames[0].grid(column=0, row=1, sticky='nsew')
+        self.chart_frames[1].grid(column=0, row=1, rowspan=2, sticky='nsew')
         for i in range(2):
-            self.chart_frames[i].grid(column=0, row=1, sticky='nsew')
             self.title_labels[i].grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
         self.check_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
         self.licel_selection_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
@@ -185,6 +235,8 @@ class GUI:
         self.menubar.add_cascade(label="Config", menu=self.config_menu)
         ##########################
         self.config_menu.add_command(label="Set config directory", command=self.set_config_directory)
+        self.config_menu.add_command(label = "Select all filters", command=self.select_all_filters)
+        self.config_menu.add_command(label = "Unselect all filters", command=self.unselect_all_filters)
         self.config_menu.add_checkbutton(label="E-Noise", variable=self.e_noise, command=self.load_data)
         self.config_menu.add_checkbutton(label="Shift", variable=self.shift, command=self.load_data)
         self.config_menu.add_checkbutton(label="Background Noise", variable=self.bg_noise, command=self.load_data)
@@ -219,6 +271,7 @@ class GUI:
         self.paths = {} 
         self.check_vars = {}
         self.selection_vars = []
+        self.calib_xlim = 5000
         
         self.bg = '#de755e'
         self.w, self.h = 700, 500

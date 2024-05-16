@@ -2,13 +2,13 @@ import tkinter as tk
 from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from licel_treatment import get_data, get_data2, get_calibration_data, get_polarization_data
+from licel_treatment import get_data, get_data2, get_calibration_data, get_polarization_data, get_V_star
 import numpy as np
 class GUI:
     
     def set_config_directory(self):
         self.config_dir = tk.filedialog.askdirectory(initialdir=self.config_dir)
-#r'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28')
+#r'./au stral-data-sample/instruments/lilas/private/measurement/2023/05/28')
     def open_file(self):
         file_paths = tk.filedialog.askopenfilenames(initialdir=r'./austral-data-sample/instruments/lilas/private/calibration/20210112/200449')
         for file_path in file_paths:
@@ -16,7 +16,7 @@ class GUI:
             if file_name not in self.paths:
                 self.paths[file_name] = file_path
                 self.file_listbox.insert(tk.END, file_path.split('/')[-1])
-
+ 
     def select_all(self):
         self.file_listbox.select_set(0, tk.END)
 
@@ -113,8 +113,9 @@ class GUI:
             x, y = T
             y_minmax = self.find_ylim(x, y, y_minmax)
             ax.plot(x, y, label=('+45', '-45', '0')[i])
+        if self.v_star.get():
+            ax.axhline(y=float(self.v_star.get()), linestyle='--', label='V*')
         ax.set_xlim(-100, self.calib_xlim)
-        print(y_minmax)
         ax.set_ylim(*y_minmax)
         ax = self.configure_ax(ax, "Distance (m)", "δ* (-)", "Calibration")
         return fig
@@ -131,11 +132,11 @@ class GUI:
         fig = self.get_main_figure_with_ploted_data()
         self.create_canvas_with_chart(fig, 0)
 
-    def plot_calibration_data(self, event):
+    def plot_calibration_data(self):
         GUI.clean(self.chart_frames[1])
         fig = self.get_calibration_figure_with_ploted_data()
         self.create_canvas_with_chart(fig, 1)
-    
+
     def set_channel_box_vars(self):
         GUI.clean(self.check_frame)
         for channel in (self.data, self.calibration_data)[0]:
@@ -149,30 +150,69 @@ class GUI:
         GUI.clean(self.channel_selection_frame)
         self.selection_vars = []
         selected_files = self.file_listbox.get(0, tk.END)
-        txt_labels = ['Select file +45', 'Select file -45', 'Select file 0']
+        txt_labels = ['Select file +45 :', 'Select file -45 :', 'Select file 0 :']
         for i in range(3):
             selected_option = tk.StringVar()
             option_menu = tk.OptionMenu(self.licel_selection_frame, selected_option, *selected_files)
             label = tk.Label(self.licel_selection_frame, text=txt_labels[i], bg=self.bg, anchor='w')
-            option_menu.grid(column=0, row=2*i+1, sticky='nsew')
-            label.grid(column=0, row=2*i, sticky='nsew')
+            label.pack(expand=True)
+            option_menu.pack(expand=True)
             self.selection_vars.append(selected_option)
         self.set_button = tk.Button(self.licel_selection_frame, text="Set", command=self.set_channel_pull_down_menu, bg='white')
-        self.set_button.grid(column=0, row=6, sticky='nsew')
+        self.set_button.pack(expand=True)
 
     def set_channel_pull_down_menu(self):
         GUI.clean(self.channel_selection_frame)
-        self.selected_chan = tk.StringVar()
+        GUI.clean(self.v_star_frame)
+        self.selected_chan.set('')
         file_names = [var.get() for var in self.selection_vars]
         if file_names[0] != '' and file_names[1] != '':
             if file_names[2] == '':
                 file_names.pop()
             file_names = [self.paths[file_name] for file_name in file_names]
             self.calibration_data = get_polarization_data(file_names, self.config_dir, not self.shift.get(), not self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
-            option_menu = tk.OptionMenu(self.channel_selection_frame, self.selected_chan, *self.calibration_data.keys(), command=self.plot_calibration_data)
-            label = tk.Label(self.channel_selection_frame, text="Select channel", bg=self.bg, anchor='w')
-            option_menu.grid(column=0, row=1, sticky='nsew')
-            label.grid(column=0, row=0, sticky='nsew')
+            option_menu = tk.OptionMenu(self.channel_selection_frame, self.selected_chan, *self.calibration_data.keys(), command=self.set_v_star_menu_and_plot_calibration_data)
+            chan_label = tk.Label(self.channel_selection_frame, text="Select channel :", bg=self.bg, anchor='w')
+            chan_label.pack(expand=True)
+            option_menu.pack(expand=True)
+            
+    
+    @staticmethod
+    def validate(P):
+        # P is the value of the Entry after the edit. If it's empty or an integer, allow the edit.
+        return P == "" or P.isdigit()
+
+    def set_v_star_interval(self):
+        data_neg45, data_pos45 = self.calibration_data[self.selected_chan.get()][:2]
+        interval = (int(self.v_star_min.get()), int(self.v_star_max.get()))
+        V_star = get_V_star(data_neg45, data_pos45, interval)
+        if V_star is not None:
+            self.v_star.set(str(V_star))
+
+    def set_v_star_menu(self):
+        GUI.clean(self.v_star_frame)
+        min_entry = tk.Entry(self.v_star_frame, textvariable=self.v_star_min, width=10, validate="key", validatecommand=(self.vcmd, '%P'))
+        max_entry = tk.Entry(self.v_star_frame, textvariable=self.v_star_max, width=10, validate="key", validatecommand=(self.vcmd, '%P'))
+        v_star_entry = tk.Entry(self.v_star_frame, textvariable=self.v_star, width=10, state='readonly')
+        min_label = tk.Label(self.v_star_frame, text="Select Min :", bg=self.bg, anchor='e')
+        max_label = tk.Label(self.v_star_frame, text="Select Max :", bg=self.bg, anchor='e')
+        v_star_label = tk.Label(self.v_star_frame, text="V* : ", bg=self.bg, anchor='e')
+        button_plot_v_star = tk.Button(self.v_star_frame, text="Plot V*", command=self.plot_calibration_data, bg='white')
+        button_set_intervals = tk.Button(self.v_star_frame, text="Set Interval", command=self.set_v_star_interval, bg='white')
+        min_entry.grid(column=1, row=0, sticky='nsew')
+        max_entry.grid(column=1, row=1, sticky='nsew')
+        v_star_entry.grid(column=1, row=3, sticky='nsew')
+        min_label.grid(column=0, row=0, sticky='nsew')
+        max_label.grid(column=0, row=1, sticky='nsew')
+        v_star_label.grid(column=0, row=3, sticky='nsew')
+        button_plot_v_star.grid(column=0, row=4, columnspan=2, sticky='nsew')
+        button_set_intervals.grid(column=0, row=2, columnspan=2, sticky='nsew')
+    
+    def set_v_star_menu_and_plot_calibration_data(self, event):
+        self.set_v_star_menu()
+        self.set_v_star_interval()
+        self.plot_calibration_data()
+            
 
     def set_data_with_selected_files(self):
         selected_files = self.file_listbox.curselection()
@@ -206,24 +246,27 @@ class GUI:
         self.tabs[0].grid_columnconfigure(1, weight=0) 
         self.tabs[1].grid_rowconfigure(0, weight=0)
         self.tabs[1].grid_rowconfigure(1, weight=0)
-        self.tabs[1].grid_rowconfigure(2, weight=1)
+        self.tabs[1].grid_rowconfigure(2, weight=0)
+        self.tabs[1].grid_rowconfigure(3, weight=1)
         self.tabs[1].grid_columnconfigure(0, weight=1)
         self.tabs[1].grid_columnconfigure(1, weight=0) 
     
     def place_elements(self):
         self.notebook.grid(row=0, column=1, rowspan = 4, sticky='nsew')
         self.chart_frames[0].grid(column=0, row=1, sticky='nsew')
-        self.chart_frames[1].grid(column=0, row=1, rowspan=2, sticky='nsew')
+        self.chart_frames[1].grid(column=0, row=1, rowspan=3, sticky='nsew')
         for i in range(2):
             self.title_labels[i].grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
         self.check_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
         self.licel_selection_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
         self.channel_selection_frame.grid(row=2, column=1, sticky='nsew')
+        self.v_star_frame.grid(row=3, column=1, sticky='nsew')
         self.file_list_frame.grid(row=1, column=0, sticky='nsew')
         self.file_listbox.pack(fill='both', expand=True)
         self.load_button.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
         self.selectall_button.grid(row=2, column=0, sticky='nsew', padx=10, pady=10)
         self.unselectall_button.grid(row=3, column=0, sticky='nsew', padx=10, pady=10)
+
         
     def configure_menubar(self):
         self.menubar.add_cascade(label="File", menu=self.file_menu)
@@ -247,6 +290,7 @@ class GUI:
         #self.root.geometry(f'{self.w}x{self.h}')
         self.root.config(bg=self.bg)
         self.root.config(menu=self.menubar)
+        
         #self.root.state('zoomed') for windows
         #self.root.wm_attributes('-zoomed', True)  # This line maximizes the window.
 
@@ -264,7 +308,7 @@ class GUI:
 
     def __init__(self):
         self.root = tk.Tk()
-        
+
         self.data = {}
         self.calibration_data = {}
         self.config_dir = r'./austral-data-sample/instruments/lilas/private/config/lidar'
@@ -289,6 +333,9 @@ class GUI:
         self.shift = tk.IntVar()
         self.deadtime = tk.IntVar()
         self.selected_chan = tk.StringVar()
+        self.v_star_min = tk.StringVar(value="1000")
+        self.v_star_max = tk.StringVar(value="3000")
+        self.v_star = tk.StringVar()
 
         self.notebook = ttk.Notebook(self.root)
         self.tabs = (ttk.Frame(self.notebook), ttk.Frame(self.notebook))
@@ -308,8 +355,8 @@ class GUI:
         self.check_frame = tk.Frame(self.tabs[0], bg=self.bg)
         self.licel_selection_frame = tk.Frame(self.tabs[1], bg=self.bg)
         self.channel_selection_frame = tk.Frame(self.tabs[1], bg=self.bg)
-        
-        
+        self.v_star_frame = tk.Frame(self.tabs[1], bg=self.bg)
+        self.vcmd = self.root.register(GUI.validate)
 
         self.file_menu = tk.Menu(self.menubar)
         self.config_menu = tk.Menu(self.menubar)

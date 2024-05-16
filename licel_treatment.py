@@ -1,6 +1,6 @@
 from pypr2.Pr2ObjectFactory import Pr2ObjectFactory
 from pypr2.Pr2Object import Pr2Object
-import numpy
+import numpy as np
 from math import sin, cos
 def get_config(config_dir, shift, bg_noise, e_noise, deadtime):
     config = Pr2ObjectFactory.get_default_config()
@@ -26,7 +26,7 @@ def get_data2(filenames = [directory + file_name for file_name in ['l2352800.005
         df = pr2.get_concat_dataframe()
         distance, power = (df['range'].values, df['power'].values)
         distance[0] = 1.0e-32
-        power2 = numpy.zeros(power.shape)
+        power2 = np.zeros(power.shape)
         power2 = power / distance**2
         data[channel] = (distance, power2)
     return data
@@ -84,3 +84,19 @@ def get_polarization_data(paths, config_dir, shift, bg_noise, e_noise, deadtime)
             if len(all_data) == 3 and chan in all_data[2]:
                 polar_data[chan].append(all_data[2][chan])
     return polar_data
+
+def average_interval(data, interval):
+    X, Y = data
+    a, b = interval
+    Y_interval = [y for x, y in zip(X, Y) if a <= x <= b]
+    average = np.mean(Y_interval) if Y_interval else None
+    return average
+
+def get_V_star(data_neg45, data_pos45, interval):
+    neg45 = average_interval(data_neg45, interval)
+    pos45 = average_interval(data_pos45, interval)
+    if neg45 is None or pos45 is None:
+        return None
+    else:
+        return (neg45 * pos45) ** 0.5
+    

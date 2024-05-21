@@ -71,7 +71,7 @@ def get_calibration_pairs(data):
     return calibration_pairs
 
 def get_calibration_data(data):
-    return {Pr2Object.get_calibration_header(p): (data[s][0], [data[p][1][i] / data[s][1][i] for i in range(min(len(data[s][0]), len(data[p][0])))]) for p, s in get_calibration_pairs(data)}
+    return {Pr2Object.get_calibration_header(p): (data[s][0], [data[s][1][i] / data[p][1][i] for i in range(min(len(data[s][0]), len(data[p][0])))]) for p, s in get_calibration_pairs(data)}
 
 def get_polarization_data(paths, config_dir, shift, bg_noise, e_noise, deadtime):
     all_data = []

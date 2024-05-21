@@ -144,7 +144,7 @@ class GUI:
         for channel in (self.data, self.calibration_data)[0]:
             var = tk.IntVar()
             check = tk.Checkbutton(self.check_frame, text=channel, variable=var, command=self.plot_main_data, bg=self.bg)
-            check.pack(side='top', anchor='w')
+            check.grid(sticky='nsew')
             self.check_vars[channel] = var
     
     def set_licel_pull_down_menu(self):
@@ -156,12 +156,12 @@ class GUI:
         for i in range(3):
             selected_option = tk.StringVar()
             option_menu = tk.OptionMenu(self.licel_selection_frame, selected_option, *selected_files)
-            label = tk.Label(self.licel_selection_frame, text=txt_labels[i], bg=self.bg, anchor='w')
-            label.pack(expand=True, padx=5, pady=5)
-            option_menu.pack(expand=True)
+            label = tk.Label(self.licel_selection_frame, text=txt_labels[i], **self.label_style, anchor='center')
+            label.grid(sticky='ew', padx=5, pady=5)
+            option_menu.grid(sticky='nsew')
             self.selection_vars.append(selected_option)
         self.set_button = tk.Button(self.licel_selection_frame, text="Set", command=self.set_channel_pull_down_menu, bg='white')
-        self.set_button.pack(expand=True)
+        self.set_button.grid(sticky='ew')
 
     def set_channel_pull_down_menu(self):
         GUI.clean(self.channel_selection_frame)
@@ -174,9 +174,9 @@ class GUI:
             file_names = [self.paths[file_name] for file_name in file_names]
             self.calibration_data = get_polarization_data(file_names, self.config_dir, not self.shift.get(), not self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
             option_menu = tk.OptionMenu(self.channel_selection_frame, self.selected_chan, *self.calibration_data.keys(), command=self.set_v_star_menu_and_plot_calibration_data)
-            chan_label = tk.Label(self.channel_selection_frame, text="Select channel :", bg=self.bg, anchor='w')
-            chan_label.pack(expand=True)
-            option_menu.pack(expand=True)
+            chan_label = tk.Label(self.channel_selection_frame, text="Select channel :", **self.label_style, anchor='center')
+            chan_label.grid(sticky='ew', padx=5, pady=5)
+            option_menu.grid(sticky='nsew')
             
     
     @staticmethod
@@ -196,15 +196,15 @@ class GUI:
         min_entry = tk.Entry(self.v_star_frame, textvariable=self.v_star_min, width=10, validate="key", validatecommand=(self.vcmd, '%P'))
         max_entry = tk.Entry(self.v_star_frame, textvariable=self.v_star_max, width=10, validate="key", validatecommand=(self.vcmd, '%P'))
         v_star_entry = tk.Entry(self.v_star_frame, textvariable=self.v_star, width=10, state='readonly')
-        min_label = tk.Label(self.v_star_frame, text="Select Min :", bg=self.bg, anchor='e')
-        max_label = tk.Label(self.v_star_frame, text="Select Max :", bg=self.bg, anchor='e')
-        v_star_label = tk.Label(self.v_star_frame, text="V* : ", bg=self.bg, anchor='e')
+        min_label = tk.Label(self.v_star_frame, text="Select Min :", **self.label_style, anchor='e')
+        max_label = tk.Label(self.v_star_frame, text="Select Max :", **self.label_style, anchor='e')
+        v_star_label = tk.Label(self.v_star_frame, text="V* : ", **self.label_style, anchor='e')
         button_plot_v_star = tk.Button(self.v_star_frame, text="Plot V*", command=self.plot_calibration_data, bg='white')
         button_set_intervals = tk.Button(self.v_star_frame, text="Set Interval", command=self.set_v_star_interval, bg='white')
         min_entry.grid(column=1, row=0, sticky='nsew')
         max_entry.grid(column=1, row=1, sticky='nsew')
         v_star_entry.grid(column=1, row=3, sticky='nsew')
-        min_label.grid(column=0, row=0, sticky='nsew', padx=5, pady=5)
+        min_label.grid(column=0, row=0, sticky='nsew', padx=5, pady=(5, 0))
         max_label.grid(column=0, row=1, sticky='nsew', padx=5, pady=5)
         v_star_label.grid(column=0, row=3, sticky='nsew', padx=5, pady=5)
         button_plot_v_star.grid(column=0, row=4, columnspan=2, sticky='nsew')
@@ -219,7 +219,7 @@ class GUI:
     def set_data_with_selected_files(self):
         selected_files = self.file_listbox.curselection()
         if selected_files != ():
-            self.data = get_data2([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, not self.shift.get(), not self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
+            self.data = get_data2([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get())
         else:
             self.data = {}
 
@@ -235,7 +235,8 @@ class GUI:
                 
     def configure_grid(self):
         self.root.grid_rowconfigure(0, weight=0)
-        self.root.grid_rowconfigure(1, weight=1)
+        self.root.grid_rowconfigure(1, weight=0)
+        self.root.grid_rowconfigure(2, weight=1)
         self.root.grid_columnconfigure(0, weight=0)
         self.root.grid_columnconfigure(1, weight=1)
         self.root.grid_columnconfigure(2, weight=0)
@@ -251,22 +252,29 @@ class GUI:
         self.tabs[1].grid_rowconfigure(3, weight=1)
         self.tabs[1].grid_columnconfigure(0, weight=1)
         self.tabs[1].grid_columnconfigure(1, weight=0) 
+        self.licel_selection_frame.grid_columnconfigure(0, weight=1)
+        self.channel_selection_frame.grid_columnconfigure(0, weight=1)
+        self.v_star_frame.grid_columnconfigure(0, weight=1)
+        for title_frame in self.titles_frames:
+            title_frame.grid_columnconfigure(0, weight=1)
+        self.check_frame.grid_columnconfigure(0, weight=1)
     
     def place_elements(self):
         self.notebook.grid(row=0, column=1, rowspan = 4, sticky='nsew')
         self.chart_frames[0].grid(column=0, row=1, sticky='nsew')
         self.chart_frames[1].grid(column=0, row=1, rowspan=3, sticky='nsew')
         for i in range(2):
-            self.title_labels[i].grid(row=0, column=0, sticky='new', padx=10, pady=10)
+            self.titles_frames[i].grid(row=0, column=0, sticky='new')
+            self.titles_labels[i].grid(sticky='nsew', padx=5, pady=5)
         self.check_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
         self.licel_selection_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
         self.channel_selection_frame.grid(row=2, column=1, sticky='nsew')
         self.v_star_frame.grid(row=3, column=1, sticky='nsew')
-        self.file_list_frame.grid(row=1, column=0, sticky='nsew')
+        self.file_list_frame.grid(row=2, column=0, sticky='nsew')
         self.file_listbox.pack(fill='both', expand=True)
-        self.load_button.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
-        self.selectall_button.grid(row=2, column=0, sticky='nsew', padx=10, pady=10)
-        self.unselectall_button.grid(row=3, column=0, sticky='nsew', padx=10, pady=10)
+        self.load_button.grid(sticky='nsew')
+        self.selectall_button.grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
+        self.unselectall_button.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
 
         
     def configure_menubar(self):
@@ -346,19 +354,22 @@ class GUI:
         self.notebook.add(self.tabs[1], text='Calibration Depolarization')
         
         self.menubar = tk.Menu(self.root)
-        self.chart_frames = tuple([tk.Frame(tab, bg='purple') for tab in self.tabs])
-        self.file_list_frame = tk.Frame(self.root, bg=self.bg)
+        self.chart_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
+        self.file_list_frame = tk.Frame(self.root, bg='#B8614E')
         self.file_listbox = tk.Listbox(self.file_list_frame, selectmode=tk.MULTIPLE)
-        self.load_button = tk.Button(self.root, text="Load", command=self.load_data, bg='white')
+        self.check_frame = tk.Frame(self.tabs[0], bg='#B8614E')
+        self.load_button = tk.Button(self.tabs[0], text="Load", command=self.load_data, bg='white')
         self.selectall_button = tk.Button(self.root, text="Select All", command=self.select_all, bg='white')
         self.unselectall_button = tk.Button(self.root, text="Unselect All", command=self.unselect_all, bg='white')
         
-        self.title_labels = (tk.Label(self.tabs[0], text="Data from files", **self.label_style),
-                             tk.Label(self.tabs[1], text="Calibration", **self.label_style))
-        self.check_frame = tk.Frame(self.tabs[0], bg=self.bg)
-        self.licel_selection_frame = tk.Frame(self.tabs[1], bg='blanched almond')
-        self.channel_selection_frame = tk.Frame(self.tabs[1], bg='yellow')
-        self.v_star_frame = tk.Frame(self.tabs[1], bg='blue')
+        self.titles_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
+        self.titles_labels = (tk.Label(self.titles_frames[0], text="Data from files", **self.label_style, anchor='center'),
+                             tk.Label(self.titles_frames[1], text="Calibration", **self.label_style, anchor='center'))
+        
+        self.licel_selection_frame = tk.Frame(self.tabs[1], bg='#B8614E')
+        self.channel_selection_frame = tk.Frame(self.tabs[1], bg='#B8614E')
+        self.v_star_frame = tk.Frame(self.tabs[1], bg='#B8614E')
+        
         self.vcmd = self.root.register(GUI.validate)
 
         self.file_menu = tk.Menu(self.menubar)

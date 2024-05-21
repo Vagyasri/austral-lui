@@ -172,7 +172,7 @@ class GUI:
             if file_names[2] == '':
                 file_names.pop()
             file_names = [self.paths[file_name] for file_name in file_names]
-            self.calibration_data = get_polarization_data(file_names, self.config_dir, not self.shift.get(), not self.bg_noise.get(), not self.e_noise.get(), not self.deadtime.get())
+            self.calibration_data = get_polarization_data(file_names, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get())
             option_menu = tk.OptionMenu(self.channel_selection_frame, self.selected_chan, *self.calibration_data.keys(), command=self.set_v_star_menu_and_plot_calibration_data)
             chan_label = tk.Label(self.channel_selection_frame, text="Select channel :", **self.label_style, anchor='center')
             chan_label.grid(sticky='ew', padx=5, pady=5)
@@ -272,7 +272,6 @@ class GUI:
         self.v_star_frame.grid(row=3, column=1, sticky='nsew')
         self.file_list_frame.grid(row=2, column=0, sticky='nsew')
         self.file_listbox.pack(fill='both', expand=True)
-        self.load_button.grid(sticky='nsew')
         self.selectall_button.grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
         self.unselectall_button.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
 
@@ -356,9 +355,8 @@ class GUI:
         self.menubar = tk.Menu(self.root)
         self.chart_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
         self.file_list_frame = tk.Frame(self.root, bg='#B8614E')
-        self.file_listbox = tk.Listbox(self.file_list_frame, selectmode=tk.MULTIPLE)
+        self.file_listbox = tk.Listbox(self.file_list_frame, selectmode=tk.SINGLE) #or selectmode=tk.MULTIPLE
         self.check_frame = tk.Frame(self.tabs[0], bg='#B8614E')
-        self.load_button = tk.Button(self.tabs[0], text="Load", command=self.load_data, bg='white')
         self.selectall_button = tk.Button(self.root, text="Select All", command=self.select_all, bg='white')
         self.unselectall_button = tk.Button(self.root, text="Unselect All", command=self.unselect_all, bg='white')
         
@@ -380,7 +378,7 @@ class GUI:
         self.configure_root()
         self.place_elements()
         self.configure_menubar()
-        #self.file_listbox.bind('<<ListboxSelect>>', self.on_select)
+        self.file_listbox.bind('<<ListboxSelect>>', self.on_select)
         
         self.root.mainloop()
     

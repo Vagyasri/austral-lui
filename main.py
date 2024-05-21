@@ -68,26 +68,26 @@ class GUI:
         ax = fig.add_subplot(111)
         return fig, ax
     
-    def configure_ax(self, ax, xlab, ylab, tit, there_is_data=True):
+    def configure_ax(self, ax, xlab, ylab, tit, there_are_data=True):
         ax.set_xlabel(fontdict=self.plot_label_font, xlabel=xlab)   
         ax.set_ylabel(fontdict=self.plot_label_font, ylabel=ylab)
         ax.set_title(fontdict=self.plot_label_font, label=tit)  
         ax.set_yscale(self.curve_type)
-        if there_is_data:
+        if there_are_data:
             ax.legend()
             #ax.set_xlim(-1000, 5000)
         return ax
     
     def get_main_figure_with_ploted_data(self):
+        selected_channels = self.chan_listbox.curselection()
         fig, ax = self.get_new_fig()
         ax.set_xlim(-100, self.main_xlim)
-        there_is_data = 0
-        for channel in self.check_vars:
-            if self.check_vars[channel].get():
-                there_is_data += 1
-                x, y = self.data[channel]
-                ax.plot(x, y, label=channel)
-        ax = self.configure_ax(ax, "Distance (m)", "Lidar Signal (mV)", "Lidar Profile", there_is_data)
+        for channel_index in selected_channels:
+            channel = self.chan_listbox.get(channel_index)
+            x, y = self.data[channel]
+            ax.plot(x, y, label=channel)
+        there_are_data = selected_channels != ()
+        ax = self.configure_ax(ax, "Distance (m)", "Lidar Signal (mV)", "Lidar Profile", there_are_data)
         return fig
     @staticmethod
     def make_data_regular(x, y):
@@ -128,7 +128,7 @@ class GUI:
         toolbar = NavigationToolbar2Tk(canvas, self.chart_frames[i])
         toolbar.update()
 
-    def plot_main_data(self):
+    def plot_main_data(self, event):
         GUI.clean(self.chart_frames[0])
         fig = self.get_main_figure_with_ploted_data()
         self.create_canvas_with_chart(fig, 0)
@@ -138,14 +138,11 @@ class GUI:
         fig = self.get_calibration_figure_with_ploted_data()
         self.create_canvas_with_chart(fig, 1)
 
-    def set_channel_box_vars(self):
-        GUI.clean(self.check_frame)
-        self.check_vars = {}
-        for channel in (self.data, self.calibration_data)[0]:
-            var = tk.IntVar()
-            check = tk.Checkbutton(self.check_frame, text=channel, variable=var, command=self.plot_main_data, bg=self.bg)
-            check.grid(sticky='nsew')
-            self.check_vars[channel] = var
+    def set_chan_listbox(self):
+        self.chan_listbox.delete(0, tk.END)
+        for channel in self.data:
+            self.chan_listbox.insert(tk.END, channel)
+            self.chan_listbox.grid(sticky='nsew')
     
     def set_licel_pull_down_menu(self):
         GUI.clean(self.licel_selection_frame)
@@ -224,10 +221,11 @@ class GUI:
             self.data = {}
 
     def load_data(self):
+        print('0')
         for i in range(2):
             GUI.clean(self.chart_frames[i])
         self.set_data_with_selected_files()
-        self.set_channel_box_vars()
+        self.set_chan_listbox()
     
     def on_select(self, event):
         self.load_data()
@@ -257,7 +255,8 @@ class GUI:
         self.v_star_frame.grid_columnconfigure(0, weight=1)
         for title_frame in self.titles_frames:
             title_frame.grid_columnconfigure(0, weight=1)
-        self.check_frame.grid_columnconfigure(0, weight=1)
+        self.chan_listbox_frame.grid_rowconfigure(0, weight=1)
+        self.chan_listbox_frame.grid_columnconfigure(0, weight=1)
     
     def place_elements(self):
         self.notebook.grid(row=0, column=1, rowspan = 4, sticky='nsew')
@@ -266,7 +265,7 @@ class GUI:
         for i in range(2):
             self.titles_frames[i].grid(row=0, column=0, sticky='new')
             self.titles_labels[i].grid(sticky='nsew', padx=5, pady=5)
-        self.check_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
+        self.chan_listbox_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
         self.licel_selection_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
         self.channel_selection_frame.grid(row=2, column=1, sticky='nsew')
         self.v_star_frame.grid(row=3, column=1, sticky='nsew')
@@ -321,11 +320,11 @@ class GUI:
         self.calibration_data = {}
         self.config_dir = r'./austral-data-sample/instruments/lilas/private/config/lidar'
         self.paths = {} 
-        self.check_vars = {}
         self.selection_vars = []
         self.main_xlim = 5000
         self.calib_xlim = 5000
         self.num_std = 3
+        self.default_channels = []
         
         self.bg = '#de755e'
         self.w, self.h = 700, 500
@@ -355,8 +354,9 @@ class GUI:
         self.menubar = tk.Menu(self.root)
         self.chart_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
         self.file_list_frame = tk.Frame(self.root, bg='#B8614E')
-        self.file_listbox = tk.Listbox(self.file_list_frame, selectmode=tk.SINGLE) #or selectmode=tk.MULTIPLE
-        self.check_frame = tk.Frame(self.tabs[0], bg='#B8614E')
+        self.file_listbox = tk.Listbox(self.file_list_frame, selectmode=tk.SINGLE, exportselection=False) #or selectmode=tk.MULTIPLE
+        self.chan_listbox_frame = tk.Frame(self.tabs[0], bg='#B8614E')
+        self.chan_listbox = tk.Listbox(self.chan_listbox_frame, selectmode=tk.MULTIPLE, exportselection=False)
         self.selectall_button = tk.Button(self.root, text="Select All", command=self.select_all, bg='white')
         self.unselectall_button = tk.Button(self.root, text="Unselect All", command=self.unselect_all, bg='white')
         
@@ -379,6 +379,7 @@ class GUI:
         self.place_elements()
         self.configure_menubar()
         self.file_listbox.bind('<<ListboxSelect>>', self.on_select)
+        self.chan_listbox.bind('<<ListboxSelect>>', self.plot_main_data)
         
         self.root.mainloop()
     

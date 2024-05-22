@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from licel_treatment import get_data, get_data2, get_calibration_data, get_polarization_data, get_V_star
+from licel_treatment import get_data, get_data2, get_calibration_data, get_polarization_data, get_V_star, find_ylim, get_v_star_points
 import numpy as np
 class GUI:
     
@@ -19,10 +19,19 @@ class GUI:
         self.set_licel_pull_down_menu()
         
     def select_all(self):
-        self.file_listbox.select_set(0, tk.END)
+        self.chan_listbox.select_set(0, tk.END)
+        self.plot_main_data()
 
     def unselect_all(self):
-        self.file_listbox.select_clear(0, tk.END)
+        self.chan_listbox.select_clear(0, tk.END)
+        self.plot_main_data()
+    def set_default_channels(self):
+        self.default_channels = []
+        selected_channels = self.chan_listbox.curselection()
+        for channel_index in selected_channels:
+            self.default_channels.append(self.chan_listbox.get(channel_index))
+
+
 
     def select_all_filters(self):
         # Set all variables to True
@@ -89,37 +98,28 @@ class GUI:
         there_are_data = selected_channels != ()
         ax = self.configure_ax(ax, "Distance (m)", "Lidar Signal (mV)", "Lidar Profile", there_are_data)
         return fig
-    @staticmethod
-    def make_data_regular(x, y):
-        if len(x) != len(y):
-            x.pop()
-
-    def find_ylim(self, channel):
-        X, Y = [], []
-        for i in range(2):
-            x, y = self.calibration_data[channel][i]
-            GUI.make_data_regular(x, y)
-            X.extend(x)
-            Y.extend(y)
-        mask = (np.array(X) <= self.calib_xlim)
-        y_range = np.array(Y)[mask]
-        mean, std = np.nanmean(y_range), np.nanstd(y_range)
-        return mean - self.num_std*std, mean + self.num_std*std
+    
         
     def get_calibration_figure_with_ploted_data(self):
         fig, ax = self.get_new_fig()
         ax.set_xlim(-100, self.calib_xlim)
         channel = self.selected_chan.get()
-        y_minmax = self.find_ylim(channel)
-        for i, T in enumerate(self.calibration_data[channel]):
+        calibration_data_channel = self.calibration_data[channel]
+        y_minmax = find_ylim(calibration_data_channel, self.calib_xlim, self.num_std)
+        for i, T in enumerate(calibration_data_channel):
             x, y = T
             ax.plot(x, y, label=('+45', '-45', '0')[i])
+        x, y = get_v_star_points(calibration_data_channel)
+        if x:
+            ax.plot(x, y, label='V* (-)')
         if self.v_star.get():
-            ax.axhline(y=float(self.v_star.get()), linestyle='--', label='V*')
+            ax.axhline(y=float(self.v_star.get()), linestyle='--', label='V* in elected interval')
         ax.set_xlim(-100, self.calib_xlim)
         ax.set_ylim(*y_minmax)
         ax = self.configure_ax(ax, "Distance (m)", "δ* (-)", "Calibration")
         return fig
+    
+
 
     def create_canvas_with_chart(self, fig, i):
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frames[i])
@@ -128,7 +128,7 @@ class GUI:
         toolbar = NavigationToolbar2Tk(canvas, self.chart_frames[i])
         toolbar.update()
 
-    def plot_main_data(self, event):
+    def plot_main_data(self, event=None):
         GUI.clean(self.chart_frames[0])
         fig = self.get_main_figure_with_ploted_data()
         self.create_canvas_with_chart(fig, 0)
@@ -142,7 +142,20 @@ class GUI:
         self.chan_listbox.delete(0, tk.END)
         for channel in self.data:
             self.chan_listbox.insert(tk.END, channel)
-            self.chan_listbox.grid(sticky='nsew')
+        self.chan_listbox.grid(sticky='nsew')
+        self.selectall_button.grid(row=0, column=1, sticky='nsew', padx=5, pady=5)
+        self.unselectall_button.grid(row=1, column=1, sticky='nsew', padx=5, pady=5)
+        self.default_button.grid(row=3, column=1, sticky='nsew', padx=5, pady=5)
+        items = self.chan_listbox.get(0, tk.END)
+        for channel in self.default_channels:
+            try:
+                index = items.index(channel)
+                self.chan_listbox.selection_set(index)
+            except ValueError:
+                pass
+        self.plot_main_data()
+        
+
     
     def set_licel_pull_down_menu(self):
         GUI.clean(self.licel_selection_frame)
@@ -221,7 +234,6 @@ class GUI:
             self.data = {}
 
     def load_data(self):
-        print('0')
         for i in range(2):
             GUI.clean(self.chart_frames[i])
         self.set_data_with_selected_files()
@@ -232,16 +244,13 @@ class GUI:
 
                 
     def configure_grid(self):
-        self.root.grid_rowconfigure(0, weight=0)
-        self.root.grid_rowconfigure(1, weight=0)
-        self.root.grid_rowconfigure(2, weight=1)
+        self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=0)
         self.root.grid_columnconfigure(1, weight=1)
-        self.root.grid_columnconfigure(2, weight=0)
-        self.root.grid_columnconfigure(3, weight=0)
         self.tabs[0].grid_rowconfigure(0, weight=0)
-        self.tabs[0].grid_rowconfigure(1, weight=1)
-        self.tabs[0].grid_rowconfigure(2, weight=0)
+        self.tabs[0].grid_rowconfigure(1, weight=0)
+        self.tabs[0].grid_rowconfigure(2, weight=1)
+        self.tabs[0].grid_rowconfigure(3, weight=0)
         self.tabs[0].grid_columnconfigure(0, weight=1)
         self.tabs[0].grid_columnconfigure(1, weight=0) 
         self.tabs[1].grid_rowconfigure(0, weight=0)
@@ -259,20 +268,19 @@ class GUI:
         self.chan_listbox_frame.grid_columnconfigure(0, weight=1)
     
     def place_elements(self):
-        self.notebook.grid(row=0, column=1, rowspan = 4, sticky='nsew')
-        self.chart_frames[0].grid(column=0, row=1, sticky='nsew')
+        self.notebook.grid(row=0, column=1, sticky='nsew')
+        self.chart_frames[0].grid(column=0, row=1, rowspan=3, sticky='nsew')
         self.chart_frames[1].grid(column=0, row=1, rowspan=3, sticky='nsew')
         for i in range(2):
             self.titles_frames[i].grid(row=0, column=0, sticky='new')
             self.titles_labels[i].grid(sticky='nsew', padx=5, pady=5)
-        self.chan_listbox_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
+        self.chan_listbox_frame.grid(row=2, column=1, sticky='nsew')
         self.licel_selection_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
         self.channel_selection_frame.grid(row=2, column=1, sticky='nsew')
         self.v_star_frame.grid(row=3, column=1, sticky='nsew')
-        self.file_list_frame.grid(row=2, column=0, sticky='nsew')
+        self.file_list_frame.grid(row=0, column=0, sticky='nsew')
         self.file_listbox.pack(fill='both', expand=True)
-        self.selectall_button.grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
-        self.unselectall_button.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+        
 
         
     def configure_menubar(self):
@@ -357,8 +365,9 @@ class GUI:
         self.file_listbox = tk.Listbox(self.file_list_frame, selectmode=tk.SINGLE, exportselection=False) #or selectmode=tk.MULTIPLE
         self.chan_listbox_frame = tk.Frame(self.tabs[0], bg='#B8614E')
         self.chan_listbox = tk.Listbox(self.chan_listbox_frame, selectmode=tk.MULTIPLE, exportselection=False)
-        self.selectall_button = tk.Button(self.root, text="Select All", command=self.select_all, bg='white')
-        self.unselectall_button = tk.Button(self.root, text="Unselect All", command=self.unselect_all, bg='white')
+        self.selectall_button = tk.Button(self.tabs[0], text="Select All", command=self.select_all, bg='white')
+        self.unselectall_button = tk.Button(self.tabs[0], text="Unselect All", command=self.unselect_all, bg='white')
+        self.default_button = tk.Button(self.tabs[0], text="Set Default Channels", command=self.set_default_channels, bg='white')
         
         self.titles_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
         self.titles_labels = (tk.Label(self.titles_frames[0], text="Data from files", **self.label_style, anchor='center'),

@@ -85,6 +85,25 @@ def get_polarization_data(paths, config_dir, shift, bg_noise, e_noise, deadtime)
                 polar_data[chan].append(all_data[2][chan])
     return polar_data
 
+def get_v_star_points(calibration_data_channel):
+    v_star_points = []
+    
+    return v_star_points
+
+
+
+def get_v_star_points(calibration_data_channel):
+    # Vérifier si les x de chaque tuple sont identiques
+    D1, D2 = calibration_data_channel
+    x1, y1 = D1
+    x2, y2 = D2
+    if x1 == x2:
+        y = [np.sqrt(a * b) for a, b in zip(y1, y2)]
+        return (x1, y)
+    else:
+        (None, None)
+
+
 def average_interval(data, interval):
     X, Y = data
     a, b = interval
@@ -100,3 +119,19 @@ def get_V_star(data_neg45, data_pos45, interval):
     else:
         return (neg45 * pos45) ** 0.5
     
+
+def make_data_regular(x, y):
+    if len(x) != len(y):
+        x.pop()
+
+def find_ylim(calibration_data_channel, calib_xlim, num_std):
+    X, Y = [], []
+    for i in range(2):
+        x, y = calibration_data_channel[i]
+        make_data_regular(x, y)
+        X.extend(x)
+        Y.extend(y)
+    mask = (np.array(X) <= calib_xlim)
+    y_range = np.array(Y)[mask]
+    mean, std = np.nanmean(y_range), np.nanstd(y_range)
+    return mean - num_std*std, mean + num_std*std

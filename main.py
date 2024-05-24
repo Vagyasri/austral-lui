@@ -2,8 +2,9 @@ import tkinter as tk
 from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from licel_treatment import get_data, get_data2, get_calibration_data, get_polarization_data, get_V_star, find_ylim, get_v_star_points
+from licel_treatment import *
 import numpy as np
+from pypr2.Pr2Object import Pr2Object
 class GUI:
     
     def set_config_directory(self):
@@ -25,13 +26,12 @@ class GUI:
     def unselect_all(self):
         self.chan_listbox.select_clear(0, tk.END)
         self.plot_main_data()
+
     def set_default_channels(self):
         self.default_channels = []
         selected_channels = self.chan_listbox.curselection()
         for channel_index in selected_channels:
             self.default_channels.append(self.chan_listbox.get(channel_index))
-
-
 
     def select_all_filters(self):
         # Set all variables to True
@@ -40,6 +40,7 @@ class GUI:
         self.bg_noise.set(1)
         self.deadtime.set(1)
         self.load_data()
+        self.set_channel_pull_down_menu()
     
     def unselect_all_filters(self):
         # Set all variables to True
@@ -48,6 +49,7 @@ class GUI:
         self.bg_noise.set(0)
         self.deadtime.set(0)
         self.load_data()
+        self.set_channel_pull_down_menu()
 
     @staticmethod
     def clean(object):
@@ -77,35 +79,48 @@ class GUI:
         ax = fig.add_subplot(111)
         return fig, ax
     
-    def configure_ax(self, ax, xlab, ylab, tit, there_are_data=True):
+    def configure_ax(self, ax, xlab, ylab, tit, i, there_are_data=True,):
         ax.set_xlabel(fontdict=self.plot_label_font, xlabel=xlab)   
         ax.set_ylabel(fontdict=self.plot_label_font, ylabel=ylab)
         ax.set_title(fontdict=self.plot_label_font, label=tit)  
         ax.set_yscale(self.curve_type)
+        ax.grid(True)
         if there_are_data:
             ax.legend()
             #ax.set_xlim(-1000, 5000)
+            self.axes[i] = ax
         return ax
     
     def get_main_figure_with_ploted_data(self):
         selected_channels = self.chan_listbox.curselection()
         fig, ax = self.get_new_fig()
-        ax.set_xlim(-100, self.main_xlim)
+        ax.set_xlim(*self.xlim[0])
         for channel_index in selected_channels:
             channel = self.chan_listbox.get(channel_index)
             x, y = self.data[channel]
             ax.plot(x, y, label=channel)
         there_are_data = selected_channels != ()
-        ax = self.configure_ax(ax, "Distance (m)", "Lidar Signal (mV)", "Lidar Profile", there_are_data)
+        ax = self.configure_ax(ax, "Distance (m)", "Lidar Signal (mV)", "Lidar Profile", 0, there_are_data)
         return fig
     
-        
+    def get_calibration_data_channel(self):
+        return self.calibration_data[self.selected_chan.get()]
+    
+    def set_scale(self, i, event=None):
+        xlim = tuple([float(self.scale_entries[i][j].get()) for j in range(2)])
+        if i:
+            data_channel = self.get_calibration_data_channel()
+        else:
+            data_channel = [self.data[self.chan_listbox.get(channel_index)] for channel_index in self.chan_listbox.curselection()]
+        ylim = find_ylim(data_channel, xlim, self.num_std, i)
+        self.axes[i].set_xlim(*xlim)
+        self.axes[i].set_ylim(*ylim)
+        self.axes[i].figure.canvas.draw()
+
     def get_calibration_figure_with_ploted_data(self):
         fig, ax = self.get_new_fig()
-        ax.set_xlim(-100, self.calib_xlim)
-        channel = self.selected_chan.get()
-        calibration_data_channel = self.calibration_data[channel]
-        y_minmax = find_ylim(calibration_data_channel, self.calib_xlim, self.num_std)
+        calibration_data_channel = self.get_calibration_data_channel()
+        y_minmax = find_ylim(calibration_data_channel, self.xlim[1], self.num_std, 1)
         for i, T in enumerate(calibration_data_channel):
             x, y = T
             ax.plot(x, y, label=('+45', '-45', '0')[i])
@@ -114,9 +129,9 @@ class GUI:
             ax.plot(x, y, label='V* (-)')
         if self.v_star.get():
             ax.axhline(y=float(self.v_star.get()), linestyle='--', label='V* in elected interval')
-        ax.set_xlim(-100, self.calib_xlim)
+        ax.set_xlim(*self.xlim[1])
         ax.set_ylim(*y_minmax)
-        ax = self.configure_ax(ax, "Distance (m)", "δ* (-)", "Calibration")
+        ax = self.configure_ax(ax, "Distance (m)", "δ* (-)", "Calibration", 1)
         return fig
     
 
@@ -143,9 +158,9 @@ class GUI:
         for channel in self.data:
             self.chan_listbox.insert(tk.END, channel)
         self.chan_listbox.grid(sticky='nsew')
-        self.selectall_button.grid(row=0, column=1, sticky='nsew', padx=5, pady=5)
-        self.unselectall_button.grid(row=1, column=1, sticky='nsew', padx=5, pady=5)
-        self.default_button.grid(row=3, column=1, sticky='nsew', padx=5, pady=5)
+        self.selectall_button.grid(row=1, column=1, sticky='nsew')
+        self.unselectall_button.grid(row=2, column=1, sticky='nsew')
+        self.default_button.grid(row=4, column=1, sticky='nsew')
         items = self.chan_listbox.get(0, tk.END)
         for channel in self.default_channels:
             try:
@@ -154,8 +169,6 @@ class GUI:
             except ValueError:
                 pass
         self.plot_main_data()
-        
-
     
     def set_licel_pull_down_menu(self):
         GUI.clean(self.licel_selection_frame)
@@ -197,7 +210,7 @@ class GUI:
     def set_v_star_interval(self):
         data_neg45, data_pos45 = self.calibration_data[self.selected_chan.get()][:2]
         interval = (int(self.v_star_min.get()), int(self.v_star_max.get()))
-        V_star = get_V_star(data_neg45, data_pos45, interval)
+        V_star = get_V_star_constant(data_neg45, data_pos45, interval)
         if V_star is not None:
             self.v_star.set(str(V_star))
 
@@ -227,11 +240,13 @@ class GUI:
             
 
     def set_data_with_selected_files(self):
-        selected_files = self.file_listbox.curselection()
-        if selected_files != ():
-            self.data = get_data2([self.paths[self.file_listbox.get(file_index)] for file_index in selected_files], self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get())
-        else:
-            self.data = {}
+        selected_files_indexes = self.file_listbox.curselection()
+        selected_files= []
+        for file_index in selected_files_indexes:
+            file_path = self.paths[self.file_listbox.get(file_index)]
+            if is_a_supported_file(file_path):
+                selected_files.append(file_path)
+        self.data = get_data(selected_files, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get(), self.r2) if selected_files != [] else {}
 
     def load_data(self):
         for i in range(2):
@@ -249,14 +264,16 @@ class GUI:
         self.root.grid_columnconfigure(1, weight=1)
         self.tabs[0].grid_rowconfigure(0, weight=0)
         self.tabs[0].grid_rowconfigure(1, weight=0)
-        self.tabs[0].grid_rowconfigure(2, weight=1)
-        self.tabs[0].grid_rowconfigure(3, weight=0)
+        self.tabs[0].grid_rowconfigure(2, weight=0)
+        self.tabs[0].grid_rowconfigure(3, weight=1)
+        self.tabs[0].grid_rowconfigure(4, weight=0)
         self.tabs[0].grid_columnconfigure(0, weight=1)
         self.tabs[0].grid_columnconfigure(1, weight=0) 
         self.tabs[1].grid_rowconfigure(0, weight=0)
         self.tabs[1].grid_rowconfigure(1, weight=0)
         self.tabs[1].grid_rowconfigure(2, weight=0)
         self.tabs[1].grid_rowconfigure(3, weight=1)
+        self.tabs[1].grid_rowconfigure(4, weight=0)
         self.tabs[1].grid_columnconfigure(0, weight=1)
         self.tabs[1].grid_columnconfigure(1, weight=0) 
         self.licel_selection_frame.grid_columnconfigure(0, weight=1)
@@ -266,18 +283,27 @@ class GUI:
             title_frame.grid_columnconfigure(0, weight=1)
         self.chan_listbox_frame.grid_rowconfigure(0, weight=1)
         self.chan_listbox_frame.grid_columnconfigure(0, weight=1)
+        for i in range(2):
+            for j in range(5):
+                self.scale_entries_frames[i].grid_columnconfigure(j, weight=1)
     
     def place_elements(self):
         self.notebook.grid(row=0, column=1, sticky='nsew')
         self.chart_frames[0].grid(column=0, row=1, rowspan=3, sticky='nsew')
         self.chart_frames[1].grid(column=0, row=1, rowspan=3, sticky='nsew')
+        self.scale_entries_frames[0].grid(column=0, row=4, sticky='nsew')
+        self.scale_entries_frames[1].grid(column=0, row=4, sticky='nsew')
         for i in range(2):
-            self.titles_frames[i].grid(row=0, column=0, sticky='new')
+            self.titles_frames[i].grid(row=0, column=0,columnspan=2, sticky='new')
             self.titles_labels[i].grid(sticky='nsew', padx=5, pady=5)
-        self.chan_listbox_frame.grid(row=2, column=1, sticky='nsew')
-        self.licel_selection_frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
+            for j in range(2):
+                self.scale_labels[i][j].grid(row=0, column=2*j, sticky='nsew', padx=5, pady=5)
+                self.scale_entries[i][j].grid(row=0, column=2*j+1, sticky='nsew')
+            self.scale_buttons[i].grid(row=0, column=4, sticky='nsew')
+        self.chan_listbox_frame.grid(row=3, column=1, sticky='nsew')
+        self.licel_selection_frame.grid(row=1, column=1, sticky='nsew')
         self.channel_selection_frame.grid(row=2, column=1, sticky='nsew')
-        self.v_star_frame.grid(row=3, column=1, sticky='nsew')
+        self.v_star_frame.grid(row=3, rowspan=2, column=1, sticky='nsew')
         self.file_list_frame.grid(row=0, column=0, sticky='nsew')
         self.file_listbox.pack(fill='both', expand=True)
         
@@ -305,10 +331,9 @@ class GUI:
         #self.root.geometry(f'{self.w}x{self.h}')
         self.root.config(bg=self.bg)
         self.root.config(menu=self.menubar)
-        
+
         #self.root.state('zoomed') for windows
         #self.root.wm_attributes('-zoomed', True)  # This line maximizes the window.
-
 
     @staticmethod
     def rien():
@@ -327,10 +352,11 @@ class GUI:
         self.data = {}
         self.calibration_data = {}
         self.config_dir = r'./austral-data-sample/instruments/lilas/private/config/lidar'
+        self.r2 = True
         self.paths = {} 
         self.selection_vars = []
-        self.main_xlim = 5000
-        self.calib_xlim = 5000
+        self.xlim = ((0, 5000), (0, 5000))
+        self.axes = [None, None]
         self.num_std = 3
         self.default_channels = []
         
@@ -353,6 +379,7 @@ class GUI:
         self.v_star_min = tk.StringVar(value="1000")
         self.v_star_max = tk.StringVar(value="3000")
         self.v_star = tk.StringVar()
+        self.vcmd = self.root.register(GUI.validate)
 
         self.notebook = ttk.Notebook(self.root)
         self.tabs = (ttk.Frame(self.notebook), ttk.Frame(self.notebook))
@@ -362,12 +389,12 @@ class GUI:
         self.menubar = tk.Menu(self.root)
         self.chart_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
         self.file_list_frame = tk.Frame(self.root, bg='#B8614E')
-        self.file_listbox = tk.Listbox(self.file_list_frame, selectmode=tk.SINGLE, exportselection=False) #or selectmode=tk.MULTIPLE
+        self.file_listbox = tk.Listbox(self.file_list_frame, width=16, selectmode=tk.SINGLE, exportselection=False) #or selectmode=tk.MULTIPLE
         self.chan_listbox_frame = tk.Frame(self.tabs[0], bg='#B8614E')
-        self.chan_listbox = tk.Listbox(self.chan_listbox_frame, selectmode=tk.MULTIPLE, exportselection=False)
+        self.chan_listbox = tk.Listbox(self.chan_listbox_frame, width = 10, selectmode=tk.MULTIPLE, exportselection=False)
         self.selectall_button = tk.Button(self.tabs[0], text="Select All", command=self.select_all, bg='white')
         self.unselectall_button = tk.Button(self.tabs[0], text="Unselect All", command=self.unselect_all, bg='white')
-        self.default_button = tk.Button(self.tabs[0], text="Set Default Channels", command=self.set_default_channels, bg='white')
+        self.default_button = tk.Button(self.tabs[0], text="Set Default", command=self.set_default_channels, bg='white')
         
         self.titles_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
         self.titles_labels = (tk.Label(self.titles_frames[0], text="Data from files", **self.label_style, anchor='center'),
@@ -376,8 +403,12 @@ class GUI:
         self.licel_selection_frame = tk.Frame(self.tabs[1], bg='#B8614E')
         self.channel_selection_frame = tk.Frame(self.tabs[1], bg='#B8614E')
         self.v_star_frame = tk.Frame(self.tabs[1], bg='#B8614E')
+        self.scale_entries_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
         
-        self.vcmd = self.root.register(GUI.validate)
+        self.scale_entries = tuple([tuple([tk.Entry(self.scale_entries_frames[j], width=8, validate="key", validatecommand=(self.vcmd, '%P')) for i in range(2)]) for j in range(2)])
+        self.scale_labels =  tuple([tuple([tk.Label(self.scale_entries_frames[j], text=('Min :', 'Max :')[i], **self.label_style, anchor='e') for i in range(2)]) for j in range(2)])
+        self.scale_buttons = tuple([tk.Button(self.scale_entries_frames[i], text='Set Scale', command=lambda i=i: self.set_scale(i)) for i in range(2)])
+        
 
         self.file_menu = tk.Menu(self.menubar)
         self.config_menu = tk.Menu(self.menubar)
@@ -392,5 +423,5 @@ class GUI:
         
         self.root.mainloop()
     
-        
-gui = GUI()
+if __name__ == '__main__':   
+    gui = GUI()

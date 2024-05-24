@@ -1,11 +1,12 @@
 from pypr2.Pr2ObjectFactory import Pr2ObjectFactory
-from pypr2.Pr2Object import Pr2Object
+from pypr2.Pr2Object import Pr2Object, Pr2ObjectException
 import numpy as np
 from math import sin, cos
 def get_config(config_dir, shift, bg_noise, e_noise, deadtime):
     config = Pr2ObjectFactory.get_default_config()
     config.BACKGROUND_NOISE_MIN_ALTITUDE = 40000.0
     config.BACKGROUND_NOISE_MAX_ALTITUDE = 60000.0
+    #print(e_noise, bg_noise, shift, deadtime)
     config.apply_enoise_correction_if_available = e_noise
     config.enable_shift = shift
     config.enable_background_correction = bg_noise
@@ -16,34 +17,29 @@ def get_config(config_dir, shift, bg_noise, e_noise, deadtime):
     config.dead_time_file = config_dir + '/Td_lidar.txt'
     return config
 directory = r'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
-def get_data2(filenames = [directory + file_name for file_name in ['l2352800.005799', 'l2352800.015859', 'l2352800.025916', 'l2352800.035973']], config_dir=r'./austral-data-sample/instruments/lilas/private/config/lidar', shift=False, bg_noise=False, e_noise=False, deadtime=False):
+
+
+def multiply_by_r2(distance, power, r2):
+    if r2:
+        distance[0] = 1.0e-32
+        #power2 = np.zeros(power.shape)
+        power2 = power / distance**2
+        return distance.tolist(), power2.tolist()
+    else:
+        return distance.tolist(), power.tolist()
+
+def get_data(filenames = [directory + file_name for file_name in ['l2352800.005799', 'l2352800.015859', 'l2352800.025916', 'l2352800.035973']], 
+             config_dir=r'./austral-data-sample/instruments/lilas/private/config/lidar', 
+             shift=False, bg_noise=False, e_noise=False, deadtime=False, r2=False):
     factory = Pr2ObjectFactory(filenames, config=get_config(config_dir, shift, bg_noise, e_noise, deadtime), return_type='dict')
     pr2_objects = factory.get_pr2_objects()
-    #print(pr2_objects['355.p_AN'].get_concat_dataframe().columns)
+    #print(pr2_objects['532.p_PC'].get_concat_dataframe()[['range', 'power']], pr2_objects['532.p_AN'].get_concat_dataframe()[['range', 'power']])
     data = {}
     for channel in pr2_objects:
         pr2 = pr2_objects[channel]
         df = pr2.get_concat_dataframe()
         distance, power = (df['range'].values, df['power'].values)
-        distance[0] = 1.0e-32
-        power2 = np.zeros(power.shape)
-        power2 = power / distance**2
-        data[channel] = (distance, power2)
-    return data
-
-def get_data(filenames = [directory + file_name for file_name in ['\l2352800.005799', '\l2352800.015859', '\l2352800.025916', '\l2352800.035973']], config_dir=r'\\wsl.localhost\Ubuntu-22.04\home\neuts\project\austral-data-sample\instruments\lilas\private\config\lidar', shift=False, bg_noise=False, e_noise=False, deadtime=False):
-    
-    factory = Pr2ObjectFactory(filenames, config=get_config(config_dir, shift, bg_noise, e_noise, deadtime), return_type='dict')
-    pr2_objects = factory.get_pr2_objects()
-    #print(pr2_objects['532.p_PC'].get_concat_dataframe()[['range', 'power']], pr2_objects['532.p_AN'].get_concat_dataframe()[['range', 'power']])
-    """
-    {channel:(range, power)}
-    """
-    data = {}
-    for channel in pr2_objects:
-        pr2 = pr2_objects[channel]
-        df = pr2.get_concat_dataframe()
-        data[channel] = (df['range'].tolist(), df['power'].tolist())
+        data[channel] = multiply_by_r2(distance, power, r2)
     return data
 
 def decomp(channel):
@@ -86,23 +82,15 @@ def get_polarization_data(paths, config_dir, shift, bg_noise, e_noise, deadtime)
     return polar_data
 
 def get_v_star_points(calibration_data_channel):
-    v_star_points = []
-    
-    return v_star_points
-
-
-
-def get_v_star_points(calibration_data_channel):
     # Vérifier si les x de chaque tuple sont identiques
-    D1, D2 = calibration_data_channel
-    x1, y1 = D1
-    x2, y2 = D2
+    data1, data2 = calibration_data_channel[0], calibration_data_channel[1]
+    x1, y1 = data1
+    x2, y2 = data2
     if x1 == x2:
         y = [np.sqrt(a * b) for a, b in zip(y1, y2)]
         return (x1, y)
     else:
         (None, None)
-
 
 def average_interval(data, interval):
     X, Y = data
@@ -111,7 +99,7 @@ def average_interval(data, interval):
     average = np.mean(Y_interval) if Y_interval else None
     return average
 
-def get_V_star(data_neg45, data_pos45, interval):
+def get_V_star_constant(data_neg45, data_pos45, interval):
     neg45 = average_interval(data_neg45, interval)
     pos45 = average_interval(data_pos45, interval)
     if neg45 is None or pos45 is None:
@@ -124,14 +112,24 @@ def make_data_regular(x, y):
     if len(x) != len(y):
         x.pop()
 
-def find_ylim(calibration_data_channel, calib_xlim, num_std):
+def find_ylim(data_channel, xlim, num_std, i):
     X, Y = [], []
-    for i in range(2):
-        x, y = calibration_data_channel[i]
+    for j in range((len(data_channel), 2)[i]):
+        x, y = data_channel[j]
         make_data_regular(x, y)
         X.extend(x)
         Y.extend(y)
-    mask = (np.array(X) <= calib_xlim)
+    xlim_min, xlim_max = xlim
+    X = np.array(X)
+    mask = (xlim_min <= X) & (X <= xlim_max)
     y_range = np.array(Y)[mask]
     mean, std = np.nanmean(y_range), np.nanstd(y_range)
     return mean - num_std*std, mean + num_std*std
+
+def is_a_supported_file(file_name):
+    try:
+        Pr2Object.find_type_of_file(file_name)
+        return True
+    except Pr2ObjectException:
+        print(f'File {file_name} is not supported')
+        return False

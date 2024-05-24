@@ -83,7 +83,7 @@ class GUI:
         ax.set_xlabel(fontdict=self.plot_label_font, xlabel=xlab)   
         ax.set_ylabel(fontdict=self.plot_label_font, ylabel=ylab)
         ax.set_title(fontdict=self.plot_label_font, label=tit)  
-        ax.set_yscale(self.curve_type)
+        ax.set_yscale(self.curve_type[i])
         ax.grid(True)
         if there_are_data:
             ax.legend()
@@ -106,12 +106,12 @@ class GUI:
     def get_calibration_data_channel(self):
         return self.calibration_data[self.selected_chan.get()]
     
+    def get_data_channel(self, i):
+        return self.get_calibration_data_channel() if i else  [self.data[self.chan_listbox.get(channel_index)] for channel_index in self.chan_listbox.curselection()]
+    
     def set_scale(self, i, event=None):
         xlim = tuple([float(self.scale_entries[i][j].get()) for j in range(2)])
-        if i:
-            data_channel = self.get_calibration_data_channel()
-        else:
-            data_channel = [self.data[self.chan_listbox.get(channel_index)] for channel_index in self.chan_listbox.curselection()]
+        data_channel = self.get_data_channel(i)
         ylim = find_ylim(data_channel, xlim, self.num_std, i)
         self.axes[i].set_xlim(*xlim)
         self.axes[i].set_ylim(*ylim)
@@ -145,11 +145,13 @@ class GUI:
 
     def plot_main_data(self, event=None):
         GUI.clean(self.chart_frames[0])
+        self.axes[0] = None
         fig = self.get_main_figure_with_ploted_data()
         self.create_canvas_with_chart(fig, 0)
 
     def plot_calibration_data(self):
         GUI.clean(self.chart_frames[1])
+        self.axes[1] = None
         fig = self.get_calibration_figure_with_ploted_data()
         self.create_canvas_with_chart(fig, 1)
 
@@ -251,6 +253,7 @@ class GUI:
     def load_data(self):
         for i in range(2):
             GUI.clean(self.chart_frames[i])
+        self.axes = [None, None]
         self.set_data_with_selected_files()
         self.set_chan_listbox()
     
@@ -284,7 +287,7 @@ class GUI:
         self.chan_listbox_frame.grid_rowconfigure(0, weight=1)
         self.chan_listbox_frame.grid_columnconfigure(0, weight=1)
         for i in range(2):
-            for j in range(5):
+            for j in range(6):
                 self.scale_entries_frames[i].grid_columnconfigure(j, weight=1)
     
     def place_elements(self):
@@ -300,6 +303,7 @@ class GUI:
                 self.scale_labels[i][j].grid(row=0, column=2*j, sticky='nsew', padx=5, pady=5)
                 self.scale_entries[i][j].grid(row=0, column=2*j+1, sticky='nsew')
             self.scale_buttons[i].grid(row=0, column=4, sticky='nsew')
+            self.scale_log_buttons[i].grid(row=0, column=5, sticky='nsew')
         self.chan_listbox_frame.grid(row=3, column=1, sticky='nsew')
         self.licel_selection_frame.grid(row=1, column=1, sticky='nsew')
         self.channel_selection_frame.grid(row=2, column=1, sticky='nsew')
@@ -339,12 +343,16 @@ class GUI:
     def rien():
         pass
     
-    def toggle_log(self):
-        if self.curve_type == 'log':
-            self.curve_type = 'linear'
-        else:
-             self.curve_type = 'log'
-        self.load_data()
+    def toggle_log(self, i):
+        if self.axes[i]:
+            if self.curve_type[i] == 'log':
+                self.curve_type[i] = 'linear'
+            else:
+                self.curve_type[i] = 'log'
+            self.axes[i].set_yscale(self.curve_type[i])
+            self.axes[i].set_ylim(find_ylim(self.get_data_channel(i), self.axes[i].get_xlim(), self.num_std, i))
+            self.axes[i].figure.canvas.draw()
+        
 
     def __init__(self):
         self.root = tk.Tk()
@@ -364,7 +372,7 @@ class GUI:
         self.w, self.h = 700, 500
         self.figure_width = 5  # in inches
         self.figure_height = 5
-        self.curve_type = 'linear' #linear, log, etc
+        self.curve_type = ['linear', 'linear'] #linear, log, etc
         self.plot_label_font = {'family': 'serif', 'color': 'black', 'weight': 'normal', 'size': 12}
         self.label_style = {'background':self.bg, 'font':('Times New Roman', 12)}
         self.dpi = self.root.winfo_fpixels('1i')  # pixels per inch
@@ -408,7 +416,7 @@ class GUI:
         self.scale_entries = tuple([tuple([tk.Entry(self.scale_entries_frames[j], width=8, validate="key", validatecommand=(self.vcmd, '%P')) for i in range(2)]) for j in range(2)])
         self.scale_labels =  tuple([tuple([tk.Label(self.scale_entries_frames[j], text=('Min :', 'Max :')[i], **self.label_style, anchor='e') for i in range(2)]) for j in range(2)])
         self.scale_buttons = tuple([tk.Button(self.scale_entries_frames[i], text='Set Scale', command=lambda i=i: self.set_scale(i)) for i in range(2)])
-        
+        self.scale_log_buttons = tuple([tk.Button(self.scale_entries_frames[i], text='Log', command=lambda i=i: self.toggle_log(i)) for i in range(2)])
 
         self.file_menu = tk.Menu(self.menubar)
         self.config_menu = tk.Menu(self.menubar)

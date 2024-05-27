@@ -56,6 +56,28 @@ class GUI:
         for widget in object.winfo_children():
             widget.destroy()
 
+    def toggle_selection(self):
+        if self.multiple_selection_var.get():
+            self.all_button.grid(row=0, column=0, sticky='nsew')
+            self.avg_button.grid(row=1, column=0, sticky='nsew')
+            self.file_listbox.config(selectmode=tk.MULTIPLE)
+            self.file_listbox.unbind('<<ListboxSelect>>')
+
+        else:
+            self.avg_button.grid_remove()
+            self.all_button.grid_remove()
+            self.file_listbox.select_clear(0, tk.END)
+            self.file_listbox.config(selectmode=tk.SINGLE)
+            self.file_listbox.bind('<<ListboxSelect>>', self.on_select)
+
+    def load_avg(self):
+        pass
+
+    def delete_selected_files(self):
+        for i in self.file_listbox.curselection()[::-1]:
+            self.paths.pop(self.file_listbox.get(i))
+            self.file_listbox.delete(i)
+            
     @staticmethod
     def get_color(channel, i):
         if i:
@@ -97,7 +119,7 @@ class GUI:
         ax.set_xlim(*self.xlim[0])
         for channel_index in selected_channels:
             channel = self.chan_listbox.get(channel_index)
-            x, y = self.data[channel]
+            x, y = self.data[channel] 
             ax.plot(x, y, label=channel)
         there_are_data = selected_channels != ()
         ax = self.configure_ax(ax, "Distance (m)", "Lidar Signal (mV)", "Lidar Profile", 0, there_are_data)
@@ -109,13 +131,15 @@ class GUI:
     def get_data_channel(self, i):
         return self.get_calibration_data_channel() if i else  [self.data[self.chan_listbox.get(channel_index)] for channel_index in self.chan_listbox.curselection()]
     
-    def set_scale(self, i, event=None):
-        xlim = tuple([float(self.scale_entries[i][j].get()) for j in range(2)])
-        data_channel = self.get_data_channel(i)
-        ylim = find_ylim(data_channel, xlim, self.num_std, i)
-        self.axes[i].set_xlim(*xlim)
-        self.axes[i].set_ylim(*ylim)
-        self.axes[i].figure.canvas.draw()
+    def set_scale(self, event=None, i=1):
+        print(event, i)
+        xlim = tuple(sorted([float(self.scale_entries[i][j].get()) for j in range(2)]))
+        if xlim[0] != xlim[1]:
+            data_channel = self.get_data_channel(i)
+            ylim = find_ylim(data_channel, xlim, self.num_std, i)
+            self.axes[i].set_xlim(*xlim)
+            self.axes[i].set_ylim(*ylim)
+            self.axes[i].figure.canvas.draw()
 
     def get_calibration_figure_with_ploted_data(self):
         fig, ax = self.get_new_fig()
@@ -262,7 +286,10 @@ class GUI:
 
                 
     def configure_grid(self):
-        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_rowconfigure(0, weight=0)
+        self.root.grid_rowconfigure(1, weight=1)
+        self.root.grid_rowconfigure(2, weight=0)
+        self.root.grid_rowconfigure(3, weight=0)
         self.root.grid_columnconfigure(0, weight=0)
         self.root.grid_columnconfigure(1, weight=1)
         self.tabs[0].grid_rowconfigure(0, weight=0)
@@ -289,9 +316,11 @@ class GUI:
         for i in range(2):
             for j in range(6):
                 self.scale_entries_frames[i].grid_columnconfigure(j, weight=1)
+        self.multiple_selection_frame.grid_columnconfigure(0, weight=1)
+        self.multiple_selection_frame.grid_rowconfigure(0, weight=1)
     
     def place_elements(self):
-        self.notebook.grid(row=0, column=1, sticky='nsew')
+        self.notebook.grid(row=0, rowspan=4, column=1, sticky='nsew')
         self.chart_frames[0].grid(column=0, row=1, rowspan=3, sticky='nsew')
         self.chart_frames[1].grid(column=0, row=1, rowspan=3, sticky='nsew')
         self.scale_entries_frames[0].grid(column=0, row=4, sticky='nsew')
@@ -308,10 +337,13 @@ class GUI:
         self.licel_selection_frame.grid(row=1, column=1, sticky='nsew')
         self.channel_selection_frame.grid(row=2, column=1, sticky='nsew')
         self.v_star_frame.grid(row=3, rowspan=2, column=1, sticky='nsew')
-        self.file_list_frame.grid(row=0, column=0, sticky='nsew')
-        self.file_listbox.pack(fill='both', expand=True)
         
+        self.file_listbox.pack(fill='both', expand=True)
 
+        self.multiple_selection_checkbutton.grid(row=0, column=0, sticky='nsew')
+        self.file_listbox_frame.grid(row=1, column=0, sticky='nsew')
+        self.delete_button.grid(row=2, column=0, sticky='nsew')
+        self.multiple_selection_frame.grid(row=3, column=0, sticky='nsew')
         
     def configure_menubar(self):
         self.menubar.add_cascade(label="File", menu=self.file_menu)
@@ -384,6 +416,7 @@ class GUI:
         self.shift = tk.IntVar()
         self.deadtime = tk.IntVar()
         self.selected_chan = tk.StringVar()
+        self.multiple_selection_var = tk.IntVar()
         self.v_star_min = tk.StringVar(value="1000")
         self.v_star_max = tk.StringVar(value="3000")
         self.v_star = tk.StringVar()
@@ -394,30 +427,39 @@ class GUI:
         self.notebook.add(self.tabs[0], text='Lidar Profiles')
         self.notebook.add(self.tabs[1], text='Calibration Depolarization')
         
-        self.menubar = tk.Menu(self.root)
+        
         self.chart_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
-        self.file_list_frame = tk.Frame(self.root, bg='#B8614E')
-        self.file_listbox = tk.Listbox(self.file_list_frame, width=16, selectmode=tk.SINGLE, exportselection=False) #or selectmode=tk.MULTIPLE
-        self.chan_listbox_frame = tk.Frame(self.tabs[0], bg='#B8614E')
-        self.chan_listbox = tk.Listbox(self.chan_listbox_frame, width = 10, selectmode=tk.MULTIPLE, exportselection=False)
-        self.selectall_button = tk.Button(self.tabs[0], text="Select All", command=self.select_all, bg='white')
-        self.unselectall_button = tk.Button(self.tabs[0], text="Unselect All", command=self.unselect_all, bg='white')
-        self.default_button = tk.Button(self.tabs[0], text="Set Default", command=self.set_default_channels, bg='white')
-        
-        self.titles_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
-        self.titles_labels = (tk.Label(self.titles_frames[0], text="Data from files", **self.label_style, anchor='center'),
-                             tk.Label(self.titles_frames[1], text="Calibration", **self.label_style, anchor='center'))
-        
         self.licel_selection_frame = tk.Frame(self.tabs[1], bg='#B8614E')
         self.channel_selection_frame = tk.Frame(self.tabs[1], bg='#B8614E')
         self.v_star_frame = tk.Frame(self.tabs[1], bg='#B8614E')
         self.scale_entries_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
-        
-        self.scale_entries = tuple([tuple([tk.Entry(self.scale_entries_frames[j], width=8, validate="key", validatecommand=(self.vcmd, '%P')) for i in range(2)]) for j in range(2)])
-        self.scale_labels =  tuple([tuple([tk.Label(self.scale_entries_frames[j], text=('Min :', 'Max :')[i], **self.label_style, anchor='e') for i in range(2)]) for j in range(2)])
+        self.file_listbox_frame = tk.Frame(self.root, bg='#B8614E')
+        self.chan_listbox_frame = tk.Frame(self.tabs[0], bg='#B8614E')
+        self.titles_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
+        self.multiple_selection_frame = tk.Frame(self.root, bg='#B8614E')
+
+        self.file_listbox = tk.Listbox(self.file_listbox_frame, width=16, selectmode=tk.SINGLE, exportselection=False) #or selectmode=tk.MULTIPLE
+        self.chan_listbox = tk.Listbox(self.chan_listbox_frame, width = 10, selectmode=tk.MULTIPLE, exportselection=False)
+
+        self.multiple_selection_checkbutton = tk.Checkbutton(self.root, text="Multiple Selection", variable=self.multiple_selection_var, command=self.toggle_selection, bg='white')
+
+        self.delete_button = tk.Button(self.root, text="Delete", command=self.delete_selected_files, bg='white')
+        self.avg_button = tk.Button(self.multiple_selection_frame, text="Average", command=self.load_avg, bg='white')
+        self.all_button = tk.Button(self.multiple_selection_frame, text="Load singles", command=self.load_data, bg='white')
+        self.selectall_button = tk.Button(self.tabs[0], text="Select All", command=self.select_all, bg='white')
+        self.unselectall_button = tk.Button(self.tabs[0], text="Unselect All", command=self.unselect_all, bg='white')
+        self.default_button = tk.Button(self.tabs[0], text="Set Default", command=self.set_default_channels, bg='white')
         self.scale_buttons = tuple([tk.Button(self.scale_entries_frames[i], text='Set Scale', command=lambda i=i: self.set_scale(i)) for i in range(2)])
         self.scale_log_buttons = tuple([tk.Button(self.scale_entries_frames[i], text='Log', command=lambda i=i: self.toggle_log(i)) for i in range(2)])
+        
 
+        self.titles_labels = (tk.Label(self.titles_frames[0], text="Data from files", **self.label_style, anchor='center'),
+                             tk.Label(self.titles_frames[1], text="Calibration", **self.label_style, anchor='center'))
+        self.scale_labels =  tuple([tuple([tk.Label(self.scale_entries_frames[j], text=('Min :', 'Max :')[i], **self.label_style, anchor='e') for i in range(2)]) for j in range(2)])
+        self.scale_entries = tuple([tuple([tk.Entry(self.scale_entries_frames[j], width=8, validate="key", validatecommand=(self.vcmd, '%P')) for i in range(2)]) for j in range(2)])
+        
+        
+        self.menubar = tk.Menu(self.root)
         self.file_menu = tk.Menu(self.menubar)
         self.config_menu = tk.Menu(self.menubar)
 
@@ -426,6 +468,9 @@ class GUI:
         self.configure_root()
         self.place_elements()
         self.configure_menubar()
+        for i in range(2):
+            for j in range(2):
+                self.scale_entries[i][j].bind('<Return>', lambda event, x=i: self.set_scale(i=x))
         self.file_listbox.bind('<<ListboxSelect>>', self.on_select)
         self.chan_listbox.bind('<<ListboxSelect>>', self.plot_main_data)
         

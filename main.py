@@ -80,9 +80,6 @@ class GUI:
             self.file_listbox.config(selectmode=tk.SINGLE)
             self.file_listbox.bind('<<ListboxSelect>>', self.on_select)
 
-    def load_avg(self):
-        pass
-
     def delete_selected_files(self):
         for i in self.file_listbox.curselection()[::-1]:
             self.paths.pop(self.file_listbox.get(i))
@@ -174,7 +171,8 @@ class GUI:
         ax = self.configure_ax(ax, "Distance (m)", "δ* (-)", "Calibration", 1)
         return fig
     
-
+    def get_selected_licels(self):
+        return [self.paths[self.file_listbox.get(i)] for i in self.file_listbox.curselection()]
 
     def create_canvas_with_chart(self, fig, i):
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frames[i])
@@ -281,7 +279,7 @@ class GUI:
         self.plot_calibration_data()
             
 
-    def set_data_with_selected_files(self):
+    def set_data_with_selected_files(self, average):
         selected_files_indexes = self.file_listbox.curselection()
         selected_files= []
         for file_index in selected_files_indexes:
@@ -290,43 +288,36 @@ class GUI:
                 selected_files.append(file_path)
             else:
                 print(f'File {file_path} is not supported')
-        self.data = get_data(selected_files, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get(), self.r2) if selected_files != [] else {}
+        self.data = get_data(selected_files, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get(), self.r2, average) if selected_files != [] else {}
 
-    def load_data(self):
-        for i in range(2):
-            GUI.clean(self.chart_frames[i])
+    def load_data(self, average=False):
+        GUI.clean(self.chart_frames[0])
         self.axes = [None, None]
-        self.set_data_with_selected_files()
+        self.set_data_with_selected_files(average)
         self.set_chan_listbox()
     
     def on_select(self, event):
         self.load_data()
 
+    @staticmethod
+    def rowconfigure(tk_obj, config):
+        for i, weight in enumerate(config):
+            tk_obj.grid_rowconfigure(i, weight=weight)
+
+    @staticmethod
+    def columnconfigure(tk_obj, config):
+        for i, weight in enumerate(config):
+            tk_obj.grid_columnconfigure(i, weight=weight)
                 
     def configure_grid(self):
-        self.root.grid_rowconfigure(0, weight=0)
-        self.root.grid_rowconfigure(1, weight=1)
-        self.root.grid_rowconfigure(2, weight=0)
-        self.root.grid_rowconfigure(3, weight=0)
-        self.root.grid_columnconfigure(0, weight=0)
-        self.root.grid_columnconfigure(1, weight=1)
-        self.tabs[0].grid_rowconfigure(0, weight=0)
-        self.tabs[0].grid_rowconfigure(1, weight=0)
-        self.tabs[0].grid_rowconfigure(2, weight=0)
-        self.tabs[0].grid_rowconfigure(3, weight=1)
-        self.tabs[0].grid_rowconfigure(4, weight=0)
-        self.tabs[0].grid_columnconfigure(0, weight=1)
-        self.tabs[0].grid_columnconfigure(1, weight=0) 
-        self.tabs[1].grid_rowconfigure(0, weight=0)
-        self.tabs[1].grid_rowconfigure(1, weight=0)
-        self.tabs[1].grid_rowconfigure(2, weight=0)
-        self.tabs[1].grid_rowconfigure(3, weight=1)
-        self.tabs[1].grid_rowconfigure(4, weight=0)
-        self.tabs[1].grid_columnconfigure(0, weight=1)
-        self.tabs[1].grid_columnconfigure(1, weight=0) 
+        GUI.rowconfigure(self.root, (0, 1, 0, 0))
+        GUI.columnconfigure(self.root, (0, 1))
+        GUI.rowconfigure(self.tabs[0], (0, 0, 0, 1, 0))
+        GUI.columnconfigure(self.tabs[0], (1, 0))
+        GUI.rowconfigure(self.tabs[1], (0, 0, 0, 1, 0))
+        GUI.columnconfigure(self.tabs[1], (1, 0))
         self.licel_selection_frame.grid_columnconfigure(0, weight=1)
         self.channel_selection_frame.grid_columnconfigure(0, weight=1)
-        self.v_star_frame.grid_columnconfigure(0, weight=1)
         for title_frame in self.titles_frames:
             title_frame.grid_columnconfigure(0, weight=1)
         self.chan_listbox_frame.grid_rowconfigure(0, weight=1)
@@ -429,10 +420,10 @@ class GUI:
         self.canvas_width = int(self.dpi * self.figure_width)
         self.canvas_height = int(self.dpi * self.figure_height)
         
-        self.bg_noise = tk.IntVar()
-        self.e_noise = tk.IntVar()
-        self.shift = tk.IntVar()
-        self.deadtime = tk.IntVar()
+        self.bg_noise = tk.IntVar(value=1)
+        self.e_noise = tk.IntVar(value=1)
+        self.shift = tk.IntVar(value=1)
+        self.deadtime = tk.IntVar(value=1)
         self.selected_chan = tk.StringVar()
         self.multiple_selection_var = tk.IntVar()
         self.v_star_min = tk.StringVar(value="1000")
@@ -467,7 +458,7 @@ class GUI:
         self.default_button = tk.Button(self.tabs[0], text="Set Default", command=self.set_default_channels, bg='white')
         self.scale_buttons = tuple([tk.Button(self.scale_entries_frames[i], text='Set Scale', command=lambda i=i: self.set_scale(i)) for i in range(2)])
         self.scale_log_buttons = tuple([tk.Button(self.scale_entries_frames[i], text='Log', command=lambda i=i: self.toggle_log(i)) for i in range(2)])
-        self.avg_button = tk.Button(self.multiple_selection_frame, text="Average", command=self.load_avg, bg='white')
+        self.avg_button = tk.Button(self.multiple_selection_frame, text="Average", command=lambda : self.load_data(True), bg='white')
         self.all_button = tk.Button(self.multiple_selection_frame, text="Load singles", command=self.load_data, bg='white')
         self.select_all_files_button = tk.Button(self.multiple_selection_frame, text="Select All", command=self.select_all_files, bg='white')
         self.unselect_all_files_button = tk.Button(self.multiple_selection_frame, text="Unselect All", command=self.unselect_all_files, bg='white')

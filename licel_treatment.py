@@ -30,14 +30,17 @@ def multiply_by_r2(distance, power, r2):
 
 def get_data(filenames = [directory + file_name for file_name in ['l2352800.005799', 'l2352800.015859', 'l2352800.025916', 'l2352800.035973']], 
              config_dir=r'./austral-data-sample/instruments/lilas/private/config/lidar', 
-             shift=False, bg_noise=False, e_noise=False, deadtime=False, r2=False):
+             shift=False, bg_noise=False, e_noise=False, deadtime=False, r2=False, average=False):
     factory = Pr2ObjectFactory(filenames, config=get_config(config_dir, shift, bg_noise, e_noise, deadtime), return_type='dict')
     pr2_objects = factory.get_pr2_objects()
     #print(pr2_objects['532.p_PC'].get_concat_dataframe()[['range', 'power']], pr2_objects['532.p_AN'].get_concat_dataframe()[['range', 'power']])
     data = {}
     for channel in pr2_objects:
         pr2 = pr2_objects[channel]
-        df = pr2.get_concat_dataframe()
+        if average:
+            df = pr2.compute_average_of_power_profiles()
+        else:
+            df = pr2.get_concat_dataframe()
         distance, power = (df['range'].values, df['power'].values)
         data[channel] = multiply_by_r2(distance, power, r2)
     return data
@@ -131,5 +134,4 @@ def is_a_supported_file(file_name):
         Pr2Object.find_type_of_file(file_name)
         return True
     except Pr2ObjectException:
-        print(f'File {file_name} is not supported')
         return False

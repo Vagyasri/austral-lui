@@ -135,6 +135,7 @@ class GUI:
             x, y = self.data[channel] 
             ax.plot(x, y, label=channel)
         there_are_data = selected_channels != ()
+        ax.set_ylim(find_ylim(self.get_data_channel(0), self.xlim[0], self.num_std, 0))
         ax = self.configure_ax(ax, "Distance (m)", "Lidar Signal (mV)", "Lidar Profile", 0, there_are_data)
         return fig
     
@@ -142,12 +143,12 @@ class GUI:
         return self.calibration_data[self.selected_chan.get()]
     
     def get_data_channel(self, i):
-        return self.get_calibration_data_channel() if i else  [self.data[self.chan_listbox.get(channel_index)] for channel_index in self.chan_listbox.curselection()]
+        return self.get_calibration_data_channel() if i else [self.data[self.chan_listbox.get(channel_index)] for channel_index in self.chan_listbox.curselection()]
     
     def set_scale(self, event=None, i=1):
-        print(event, i)
-        xlim = tuple(sorted([float(self.scale_entries[i][j].get()) for j in range(2)]))
-        if xlim[0] != xlim[1]:
+        a, b = self.scale_entries[i][0].get(), self.scale_entries[i][1].get()
+        if a!= b and a!= '' and b!= '' and self.axes[i] is not None:
+            xlim = tuple(sorted([float(a), float(b)]))
             data_channel = self.get_data_channel(i)
             ylim = find_ylim(data_channel, xlim, self.num_std, i)
             self.axes[i].set_xlim(*xlim)
@@ -401,7 +402,7 @@ class GUI:
         self.data = {}
         self.calibration_data = {}
         self.config_dir = r'./austral-data-sample/instruments/lilas/private/config/lidar'
-        self.r2 = True
+        self.r2 = False
         self.paths = {} 
         self.selection_vars = []
         self.xlim = ((0, 5000), (0, 5000))
@@ -456,7 +457,7 @@ class GUI:
         self.selectall_button = tk.Button(self.tabs[0], text="Select All", command=self.select_all_chan, bg='white')
         self.unselectall_button = tk.Button(self.tabs[0], text="Unselect All", command=self.unselect_all_chan, bg='white')
         self.default_button = tk.Button(self.tabs[0], text="Set Default", command=self.set_default_channels, bg='white')
-        self.scale_buttons = tuple([tk.Button(self.scale_entries_frames[i], text='Set Scale', command=lambda i=i: self.set_scale(i)) for i in range(2)])
+        self.scale_buttons = tuple([tk.Button(self.scale_entries_frames[i], text='Set Scale', command=lambda event=None, x=i: self.set_scale(i=x)) for i in range(2)])
         self.scale_log_buttons = tuple([tk.Button(self.scale_entries_frames[i], text='Log', command=lambda i=i: self.toggle_log(i)) for i in range(2)])
         self.avg_button = tk.Button(self.multiple_selection_frame, text="Average", command=lambda : self.load_data(True), bg='white')
         self.all_button = tk.Button(self.multiple_selection_frame, text="Load singles", command=self.load_data, bg='white')

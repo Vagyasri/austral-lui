@@ -116,18 +116,21 @@ def make_data_regular(x, y):
         x.pop()
 
 def find_ylim(data_channel, xlim, num_std, i):
-    X, Y = [], []
-    for j in range((len(data_channel), 2)[i]):
-        x, y = data_channel[j]
-        make_data_regular(x, y)
-        X.extend(x)
-        Y.extend(y)
-    xlim_min, xlim_max = xlim
-    X = np.array(X)
-    mask = (xlim_min <= X) & (X <= xlim_max)
-    y_range = np.array(Y)[mask]
-    mean, std = np.nanmean(y_range), np.nanstd(y_range)
-    return mean - num_std*std, mean + num_std*std
+    if data_channel:
+        X, Y = [], []
+        for j in range((len(data_channel), 2)[i]):
+            x, y = data_channel[j]
+            make_data_regular(x, y)
+            X.extend(x)
+            Y.extend(y)
+        xlim_min, xlim_max = xlim
+        X = np.array(X)
+        mask = (xlim_min <= X) & (X <= xlim_max)
+        y_range = np.array(Y)[mask]
+        mean, std = np.nanmean(y_range), np.nanstd(y_range)
+        return mean - num_std*std, mean + num_std*std
+    else:
+        return 0, 1
 
 def is_a_supported_file(file_name):
     try:

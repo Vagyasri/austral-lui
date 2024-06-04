@@ -4,8 +4,8 @@ import numpy as np
 from math import sin, cos
 def get_config(config_dir, shift, bg_noise, e_noise, deadtime):
     config = Pr2ObjectFactory.get_default_config()
-    config.BACKGROUND_NOISE_MIN_ALTITUDE = 40000.0
-    config.BACKGROUND_NOISE_MAX_ALTITUDE = 60000.0
+    #config.BACKGROUND_NOISE_MIN_ALTITUDE = 40000.0
+    #config.BACKGROUND_NOISE_MAX_ALTITUDE = 60000.0
     #print(e_noise, bg_noise, shift, deadtime)
     config.apply_enoise_correction_if_available = e_noise
     config.enable_shift = shift
@@ -84,16 +84,8 @@ def get_polarization_data(paths, config_dir, shift, bg_noise, e_noise, deadtime)
                 polar_data[chan].append(all_data[2][chan])
     return polar_data
 
-def get_v_star_points(calibration_data_channel):
-    # Vérifier si les x de chaque tuple sont identiques
-    data1, data2 = calibration_data_channel[0], calibration_data_channel[1]
-    x1, y1 = data1
-    x2, y2 = data2
-    if x1 == x2:
-        y = [np.sqrt(a * b) for a, b in zip(y1, y2)]
-        return (x1, y)
-    else:
-        (None, None)
+def get_v_star_points(x1, y1, x2, y2):
+    return (x1, [np.sqrt(a * b) for a, b in zip(y1, y2)]) if x1 == x2 else (None, None)
 
 def average_interval(data, interval):
     X, Y = data
@@ -127,6 +119,7 @@ def find_ylim(data_channel, xlim, num_std, i):
         X = np.array(X)
         mask = (xlim_min <= X) & (X <= xlim_max)
         y_range = np.array(Y)[mask]
+        y_range = np.where(y_range <= 0, np.nan, y_range)
         mean, std = np.nanmean(y_range), np.nanstd(y_range)
         return mean - num_std*std, mean + num_std*std
     else:
@@ -138,3 +131,17 @@ def is_a_supported_file(file_name):
         return True
     except Pr2ObjectException:
         return False
+    
+def smooth(Y, nb_points=20):
+    if Y == []:
+        return []
+    else:
+        Y = np.array(Y)
+        nb_points = nb_points // 2 * 2
+        indices = np.arange(-nb_points//2, nb_points//2+1)
+        Y_smooth = np.array([])
+        for i in range(nb_points//2, len(Y) - nb_points//2):
+            Y_avg = np.nanmean(Y[i + indices])
+            Y_smooth = np.append(Y_smooth, Y_avg)
+        Y_smooth = np.concatenate((Y[:nb_points//2], Y_smooth, Y[-nb_points//2:]))
+        return Y_smooth.tolist()

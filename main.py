@@ -114,36 +114,33 @@ class GUI:
         ax = fig.add_subplot(111)
         return fig, ax
     
-    def configure_ax(self, ax, xlab, ylab, tit, i, there_are_data=True,):
+    def configure_ax(self, ax, xlab, ylab, tit, i, data_channel, there_are_data=True):
+        ax.set_ylim(find_ylim(data_channel, self.xlim[i], self.num_std, i))
         ax.set_xlabel(fontdict=self.plot_label_font, xlabel=xlab)   
         ax.set_ylabel(fontdict=self.plot_label_font, ylabel=ylab)
         ax.set_title(fontdict=self.plot_label_font, label=tit)  
-        ax.set_yscale(self.curve_type[i])
         ax.grid(True)
         if there_are_data:
+            ax.set_yscale(self.curve_type[i])
             ax.legend()
             #ax.set_xlim(-1000, 5000)
             self.axes[i] = ax
         return ax
     
-    def get_main_figure_with_ploted_data(self):
+    def get_main_figure(self):
         selected_channels = self.chan_listbox.curselection()
         fig, ax = self.get_new_fig()
         ax.set_xlim(*self.xlim[0])
         for channel_index in selected_channels:
             channel = self.chan_listbox.get(channel_index)
-            x, y = self.data[channel] 
+            x, y = self.data[channel]
             ax.plot(x, y, label=channel)
         there_are_data = selected_channels != ()
-        ax.set_ylim(find_ylim(self.get_data_channel(0), self.xlim[0], self.num_std, 0))
-        ax = self.configure_ax(ax, "Distance (m)", "Lidar Signal (mV)", "Lidar Profile", 0, there_are_data)
+        ax = self.configure_ax(ax, "Distance (m)", "Lidar Signal (mV)", "Lidar Profile", 0, self.get_data_channel(0), there_are_data)
         return fig
     
-    def get_calibration_data_channel(self):
-        return self.calibration_data[self.selected_chan.get()]
-    
     def get_data_channel(self, i):
-        return self.get_calibration_data_channel() if i else [self.data[self.chan_listbox.get(channel_index)] for channel_index in self.chan_listbox.curselection()]
+        return self.calibration_data[self.selected_chan.get()] if i else [self.data[self.chan_listbox.get(channel_index)] for channel_index in self.chan_listbox.curselection()]
     
     def set_scale(self, event=None, i=1):
         a, b = self.scale_entries[i][0].get(), self.scale_entries[i][1].get()
@@ -155,21 +152,36 @@ class GUI:
             self.axes[i].set_ylim(*ylim)
             self.axes[i].figure.canvas.draw()
 
-    def get_calibration_figure_with_ploted_data(self):
+    def get_calibration_figure(self):
         fig, ax = self.get_new_fig()
-        calibration_data_channel = self.get_calibration_data_channel()
-        y_minmax = find_ylim(calibration_data_channel, self.xlim[1], self.num_std, 1)
-        for i, T in enumerate(calibration_data_channel):
-            x, y = T
-            ax.plot(x, y, label=('+45', '-45', '0')[i])
-        x, y = get_v_star_points(calibration_data_channel)
-        if x:
+        calibration_data_channel = self.get_data_channel(1)
+        x1, y1 = calibration_data_channel[0]
+        x2, y2 = calibration_data_channel[1]
+        if self.smooth:
+            y1, y2 = smooth(y1, self.smooth_lvl), smooth(y2, self.smooth_lvl)
+        ax.plot(x1, y1, label='+45')
+        ax.plot(x2, y2, label='-45')
+        x, y = get_v_star_points(x1, y1, x2, y2)
+        if y:
             ax.plot(x, y, label='V* (-)')
-        if self.v_star.get():
-            ax.axhline(y=float(self.v_star.get()), linestyle='--', label='V* in elected interval')
+        v_star = self.v_star.get()
+        if v_star:
+            v_star = float(v_star)
+            
+            ax.axhline(y=float(v_star), linestyle='--', label='V* in elected interval')
+            if len(calibration_data_channel) > 2:
+                ax.axhline(y=self.c_star, linestyle='--', label='c*', color='pink')
+                if v_star > 1:
+                    v_star = 1 / v_star
+                x3, y3 = calibration_data_channel[2]
+                y3 = [y * float(v_star) for y in y3]
+                if self.smooth:
+                    y3 = smooth(y3, self.smooth_lvl)
+                ax.plot(x3, y3, label='corrected 0')
+                
+        
         ax.set_xlim(*self.xlim[1])
-        ax.set_ylim(*y_minmax)
-        ax = self.configure_ax(ax, "Distance (m)", "δ* (-)", "Calibration", 1)
+        ax = self.configure_ax(ax, "Distance (m)", "δ* (-)", "Calibration", 1, calibration_data_channel)
         return fig
     
     def get_selected_licels(self):
@@ -185,13 +197,13 @@ class GUI:
     def plot_main_data(self, event=None):
         GUI.clean(self.chart_frames[0])
         self.axes[0] = None
-        fig = self.get_main_figure_with_ploted_data()
+        fig = self.get_main_figure()
         self.create_canvas_with_chart(fig, 0)
 
     def plot_calibration_data(self):
         GUI.clean(self.chart_frames[1])
         self.axes[1] = None
-        fig = self.get_calibration_figure_with_ploted_data()
+        fig = self.get_calibration_figure()
         self.create_canvas_with_chart(fig, 1)
 
     def set_chan_listbox(self):
@@ -401,6 +413,7 @@ class GUI:
 
         self.data = {}
         self.calibration_data = {}
+        self.smoot_calibration_data = {}
         self.config_dir = r'./austral-data-sample/instruments/lilas/private/config/lidar'
         self.r2 = False
         self.paths = {} 
@@ -409,6 +422,9 @@ class GUI:
         self.axes = [None, None]
         self.num_std = 3
         self.default_channels = []
+        self.smooth = True
+        self.smooth_lvl = 20
+        self.c_star = 4 / 1000
         
         self.bg = '#de755e'
         self.w, self.h = 700, 500

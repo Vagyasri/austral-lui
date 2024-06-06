@@ -17,7 +17,8 @@ class GUI:
             if file_name not in self.paths:
                 self.paths[file_name] = file_path
                 self.file_listbox.insert(tk.END, file_path.split('/')[-1])
-        self.set_licel_pull_down_menu()
+        if file_paths:
+            self.set_licel_pull_down_menu()
         
     def select_all_chan(self):
         self.chan_listbox.select_set(0, tk.END)
@@ -115,13 +116,17 @@ class GUI:
         return fig, ax
     
     def configure_ax(self, ax, xlab, ylab, tit, i, data_channel, there_are_data=True):
-        ax.set_ylim(find_ylim(data_channel, self.xlim[i], self.num_std, i))
+        if there_are_data:
+            ax.set_yscale(self.curve_type[i])
+        ylim = find_ylim(data_channel, self.xlim[i], self.num_std, i)
+        if self.curve_type[i] == 'log':
+            ylim = (max(ylim[0], ylim[1]*self.y_log_low_lim), ylim[1])
+        ax.set_ylim(*ylim)
         ax.set_xlabel(fontdict=self.plot_label_font, xlabel=xlab)   
         ax.set_ylabel(fontdict=self.plot_label_font, ylabel=ylab)
         ax.set_title(fontdict=self.plot_label_font, label=tit)  
         ax.grid(True)
         if there_are_data:
-            ax.set_yscale(self.curve_type[i])
             ax.legend()
             #ax.set_xlim(-1000, 5000)
             self.axes[i] = ax
@@ -147,8 +152,10 @@ class GUI:
         if a!= b and a!= '' and b!= '' and self.axes[i] is not None:
             xlim = tuple(sorted([float(a), float(b)]))
             data_channel = self.get_data_channel(i)
-            ylim = find_ylim(data_channel, xlim, self.num_std, i)
             self.axes[i].set_xlim(*xlim)
+            ylim = find_ylim(data_channel, xlim, self.num_std, i)
+            if self.curve_type[i] == 'log':
+                ylim = (max(ylim[0], ylim[1]*self.y_log_low_lim), ylim[1])
             self.axes[i].set_ylim(*ylim)
             self.axes[i].figure.canvas.draw()
 
@@ -159,22 +166,23 @@ class GUI:
         x2, y2 = calibration_data_channel[1]
         if self.smooth:
             y1, y2 = smooth(y1, self.smooth_lvl), smooth(y2, self.smooth_lvl)
-        ax.plot(x1, y1, label='+45')
-        ax.plot(x2, y2, label='-45')
-        x, y = get_v_star_points(x1, y1, x2, y2)
-        if y:
-            ax.plot(x, y, label='V* (-)')
+        if not self.unplot_var.get():
+            curve1, = ax.plot(x1, y1, label='+45')
+            curve2, = ax.plot(x2, y2, label='-45')
+            self.calib_curves = [curve1, curve2]
+
+            x, y = get_v_star_points(x1, y1, x2, y2)
+            if y:
+                curve, = ax.plot(x, y, label='V* (-)')
+                self.calib_curves.append(curve)
         v_star = self.v_star.get()
         if v_star:
             v_star = float(v_star)
-            
-            ax.axhline(y=float(v_star), linestyle='--', label='V* in elected interval')
+            ax.axhline(y=v_star, linestyle='--', label='V* in elected interval')
             if len(calibration_data_channel) > 2:
                 ax.axhline(y=self.c_star, linestyle='--', label='c*', color='pink')
-                if v_star > 1:
-                    v_star = 1 / v_star
                 x3, y3 = calibration_data_channel[2]
-                y3 = [y * float(v_star) for y in y3]
+                y3 = [y * v_star for y in y3]
                 if self.smooth:
                     y3 = smooth(y3, self.smooth_lvl)
                 ax.plot(x3, y3, label='corrected 0')
@@ -254,7 +262,16 @@ class GUI:
             chan_label.grid(sticky='ew', padx=5, pady=5)
             option_menu.grid(sticky='nsew')
             
-    
+    def unplot_45(self):
+        if self.unplot_var.get():
+            for calib_curve in self.calib_curves:
+                calib_curve.remove()
+            self.axes[1].legend()
+            self.axes[1].figure.canvas.draw()
+        else:
+            self.plot_calibration_data()
+                
+
     @staticmethod
     def validate(P):
         # P is the value of the Entry after the edit. If it's empty or an integer, allow the edit.
@@ -266,6 +283,7 @@ class GUI:
         V_star = get_V_star_constant(data_neg45, data_pos45, interval)
         if V_star is not None:
             self.v_star.set(str(V_star))
+        self.plot_calibration_data()
 
     def set_v_star_menu(self):
         GUI.clean(self.v_star_frame)
@@ -275,7 +293,7 @@ class GUI:
         min_label = tk.Label(self.v_star_frame, text="Select Min :", **self.label_style, anchor='e')
         max_label = tk.Label(self.v_star_frame, text="Select Max :", **self.label_style, anchor='e')
         v_star_label = tk.Label(self.v_star_frame, text="V* : ", **self.label_style, anchor='e')
-        button_plot_v_star = tk.Button(self.v_star_frame, text="Plot V*", command=self.plot_calibration_data, bg='white')
+        checkbutton_unplot_45 = tk.Checkbutton(self.v_star_frame, text="Unplot", variable=self.unplot_var, command=self.unplot_45, bg='white')
         button_set_intervals = tk.Button(self.v_star_frame, text="Set Interval", command=self.set_v_star_interval, bg='white')
         min_entry.grid(column=1, row=0, sticky='nsew')
         max_entry.grid(column=1, row=1, sticky='nsew')
@@ -283,7 +301,7 @@ class GUI:
         min_label.grid(column=0, row=0, sticky='nsew', padx=5, pady=(5, 0))
         max_label.grid(column=0, row=1, sticky='nsew', padx=5, pady=5)
         v_star_label.grid(column=0, row=3, sticky='nsew', padx=5, pady=5)
-        button_plot_v_star.grid(column=0, row=4, columnspan=2, sticky='nsew')
+        checkbutton_unplot_45.grid(column=0, row=4, columnspan=2, sticky='nsew')
         button_set_intervals.grid(column=0, row=2, columnspan=2, sticky='nsew')
     
     def set_v_star_menu_and_plot_calibration_data(self, event):
@@ -399,12 +417,14 @@ class GUI:
     
     def toggle_log(self, i):
         if self.axes[i]:
+            ylim = find_ylim(self.get_data_channel(i), self.axes[i].get_xlim(), self.num_std, i)
             if self.curve_type[i] == 'log':
                 self.curve_type[i] = 'linear'
             else:
                 self.curve_type[i] = 'log'
+                ylim = (max(ylim[0], ylim[1]*self.y_log_low_lim), ylim[1])
             self.axes[i].set_yscale(self.curve_type[i])
-            self.axes[i].set_ylim(find_ylim(self.get_data_channel(i), self.axes[i].get_xlim(), self.num_std, i))
+            self.axes[i].set_ylim(*ylim)
             self.axes[i].figure.canvas.draw()
         
 
@@ -419,10 +439,12 @@ class GUI:
         self.paths = {} 
         self.selection_vars = []
         self.xlim = ((0, 5000), (0, 5000))
+        self.y_log_low_lim = 0.0001
         self.axes = [None, None]
         self.num_std = 3
         self.default_channels = []
         self.smooth = True
+        self.calib_curves = []
         self.smooth_lvl = 20
         self.c_star = 4 / 1000
         
@@ -446,6 +468,7 @@ class GUI:
         self.v_star_min = tk.StringVar(value="1000")
         self.v_star_max = tk.StringVar(value="3000")
         self.v_star = tk.StringVar()
+        self.unplot_var = tk.IntVar()
         self.vcmd = self.root.register(GUI.validate)
 
         self.notebook = ttk.Notebook(self.root)
@@ -504,7 +527,9 @@ class GUI:
         self.chan_listbox.bind('<<ListboxSelect>>', self.plot_main_data)
         self.chan_listbox.bind('<a>', lambda event: self.select(self.chan_listbox))
         
+    def run(self):
         self.root.mainloop()
     
 if __name__ == '__main__':   
     gui = GUI()
+    gui.run()

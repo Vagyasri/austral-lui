@@ -85,7 +85,7 @@ def get_polarization_data(paths, config_dir, shift, bg_noise, e_noise, deadtime)
     return polar_data
 
 def get_v_star_points(x1, y1, x2, y2):
-    return (x1, [np.sqrt(a * b) for a, b in zip(y1, y2)]) if x1 == x2 else (None, None)
+    return (x1, [np.sqrt(a * b) if a >=0 and b >=0 else np.nan for a, b in zip(y1, y2)]) if x1 == x2 else (None, None)
 
 def average_interval(data, interval):
     X, Y = data
@@ -97,11 +97,7 @@ def average_interval(data, interval):
 def get_V_star_constant(data_neg45, data_pos45, interval):
     neg45 = average_interval(data_neg45, interval)
     pos45 = average_interval(data_pos45, interval)
-    if neg45 is None or pos45 is None:
-        return None
-    else:
-        return (neg45 * pos45) ** 0.5
-    
+    return None if neg45 is None or pos45 is None else (neg45 * pos45) ** 0.5
 
 def make_data_regular(x, y):
     if len(x) != len(y):

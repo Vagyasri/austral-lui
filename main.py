@@ -43,6 +43,10 @@ class GUI:
         for channel_index in selected_channels:
             self.default_channels.append(self.chan_listbox.get(channel_index))
 
+    def on_filter(self):
+        self.load_data()
+        self.set_channel_pull_down_menu()
+
     def select_all_filters(self):
         # Set all variables to True
         self.e_noise.set(1)
@@ -409,6 +413,7 @@ class GUI:
         self.config_menu.add_checkbutton(label="Shift", variable=self.shift, command=self.load_data)
         self.config_menu.add_checkbutton(label="Background Noise", variable=self.bg_noise, command=self.load_data)
         self.config_menu.add_checkbutton(label="Deadtime", variable=self.deadtime, command=self.load_data)
+        self.config_menu.add_checkbutton(label="Deadtime", variable=self.deadtime, command=self.load_data)
         
     def configure_root(self):
         self.root.title("Austral GUI")
@@ -442,9 +447,9 @@ class GUI:
         self.data = {}
         self.calibration_data = {}
         self.smoot_calibration_data = {}
-        self.initial_dir = './austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
+        self.initial_dir = './austral-data-sample/instruments/lilas/private/calibration/20210112/200449/' #'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
         self.config_dir = './austral-data-sample/instruments/lilas/private/config/lidar'
-        self.r2 = False
+        self.r2 = True
         self.paths = {} 
         self.selection_vars = []
         self.xlim = ((0, 5000), (0, 5000))

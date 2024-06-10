@@ -213,9 +213,8 @@ class GUI:
     def plot_data(self, i):
         GUI.clean(self.chart_frames[i])
         self.axes[i] = None
-        self.axes[0] = None
         fig = (self.get_main_figure, self.get_calibration_figure)[i]()
-        self.create_canvas_with_chart(fig, 0)
+        self.create_canvas_with_chart(fig, i)
 
     def plot_main_data(self, event=None):
         self.plot_data(0)

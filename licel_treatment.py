@@ -35,6 +35,7 @@ def get_data(filenames = [directory + file_name for file_name in ['l2352800.0057
     pr2_objects = factory.get_pr2_objects()
     #print(pr2_objects['532.p_PC'].get_concat_dataframe()[['range', 'power']], pr2_objects['532.p_AN'].get_concat_dataframe()[['range', 'power']])
     data = {}
+    
     for channel in pr2_objects:
         pr2 = pr2_objects[channel]
         if average:

@@ -5,13 +5,16 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from licel_treatment import *
 import numpy as np
 from pypr2.Pr2Object import Pr2Object
+import warnings
+
+
 class GUI:
     
     def set_config_directory(self):
         self.config_dir = tk.filedialog.askdirectory(initialdir=self.config_dir)
 #r'./au stral-data-sample/instruments/lilas/private/measurement/2023/05/28')
     def open_file(self):
-        file_paths = tk.filedialog.askopenfilenames(initialdir=r'./austral-data-sample/instruments/lilas/private/calibration/20210112/200449')
+        file_paths = tk.filedialog.askopenfilenames(initialdir=self.initial_dir)
         for file_path in file_paths:
             file_name = file_path.split('/')[-1]
             if file_name not in self.paths:
@@ -71,7 +74,6 @@ class GUI:
             self.unselect_all_files_button.grid(row=3, column=0, sticky='nsew')
             self.file_listbox.config(selectmode=tk.MULTIPLE)
             self.file_listbox.unbind('<<ListboxSelect>>')
-
         else:
             self.avg_button.grid_remove()
             self.all_button.grid_remove()
@@ -91,7 +93,7 @@ class GUI:
         if len(curselection) == 2:
             a, b = curselection
             listbox.select_set(a, b)
-
+    """
     @staticmethod
     def get_color(channel, i):
         if i:
@@ -108,7 +110,7 @@ class GUI:
             return '#BCFF00'
         else:
             return '#AF0000'
-    
+    """
     def get_new_fig(self):
         fig = plt.Figure()
         fig.tight_layout()
@@ -159,11 +161,7 @@ class GUI:
             self.axes[i].set_ylim(*ylim)
             self.axes[i].figure.canvas.draw()
 
-    def get_calibration_figure(self):
-        fig, ax = self.get_new_fig()
-        calibration_data_channel = self.get_data_channel(1)
-        x1, y1 = calibration_data_channel[0]
-        x2, y2 = calibration_data_channel[1]
+    def get_ax_with_calibration_curves(self, ax, x1, y1, x2, y2):
         if self.smooth:
             y1, y2 = smooth(y1, self.smooth_lvl), smooth(y2, self.smooth_lvl)
         if not self.unplot_var.get():
@@ -175,6 +173,9 @@ class GUI:
             if y:
                 curve, = ax.plot(x, y, label='V* (-)')
                 self.calib_curves.append(curve)
+        return ax
+
+    def get_ax_with_verification_curves(self, ax, calibration_data_channel):
         v_star = self.v_star.get()
         if v_star:
             v_star = float(v_star)
@@ -186,8 +187,15 @@ class GUI:
                 if self.smooth:
                     y3 = smooth(y3, self.smooth_lvl)
                 ax.plot(x3, y3, label='corrected 0')
-                
-        
+        return ax
+    
+    def get_calibration_figure(self):
+        fig, ax = self.get_new_fig()
+        calibration_data_channel = self.get_data_channel(1)
+        x1, y1 = calibration_data_channel[0]
+        x2, y2 = calibration_data_channel[1]
+        ax = self.get_ax_with_calibration_curves(ax, x1, y1, x2, y2)
+        ax = self.get_ax_with_verification_curves(ax, calibration_data_channel)            
         ax.set_xlim(*self.xlim[1])
         ax = self.configure_ax(ax, "Distance (m)", "δ* (-)", "Calibration", 1, calibration_data_channel)
         return fig
@@ -202,17 +210,18 @@ class GUI:
         toolbar = NavigationToolbar2Tk(canvas, self.chart_frames[i])
         toolbar.update()
 
-    def plot_main_data(self, event=None):
-        GUI.clean(self.chart_frames[0])
+    def plot_data(self, i):
+        GUI.clean(self.chart_frames[i])
+        self.axes[i] = None
         self.axes[0] = None
-        fig = self.get_main_figure()
+        fig = (self.get_main_figure, self.get_calibration_figure)[i]()
         self.create_canvas_with_chart(fig, 0)
 
+    def plot_main_data(self, event=None):
+        self.plot_data(0)
+
     def plot_calibration_data(self):
-        GUI.clean(self.chart_frames[1])
-        self.axes[1] = None
-        fig = self.get_calibration_figure()
-        self.create_canvas_with_chart(fig, 1)
+        self.plot_data(1)
 
     def set_chan_listbox(self):
         self.chan_listbox.delete(0, tk.END)
@@ -434,7 +443,8 @@ class GUI:
         self.data = {}
         self.calibration_data = {}
         self.smoot_calibration_data = {}
-        self.config_dir = r'./austral-data-sample/instruments/lilas/private/config/lidar'
+        self.initial_dir = './austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
+        self.config_dir = './austral-data-sample/instruments/lilas/private/config/lidar'
         self.r2 = False
         self.paths = {} 
         self.selection_vars = []
@@ -528,6 +538,7 @@ class GUI:
         self.chan_listbox.bind('<a>', lambda event: self.select(self.chan_listbox))
         
     def run(self):
+        warnings.filterwarnings("ignore", message="TestResult has no addDuration method")
         self.root.mainloop()
     
 if __name__ == '__main__':   

@@ -136,7 +136,7 @@ def is_a_supported_file(file_name):
         return True
     except Pr2ObjectException:
         return False
-    
+"""
 def smooth(Y, nb_points=20):
     if Y == []:
         return []
@@ -150,3 +150,18 @@ def smooth(Y, nb_points=20):
             Y_smooth = np.append(Y_smooth, Y_avg)
         Y_smooth = np.concatenate((Y[:nb_points//2], Y_smooth, Y[-nb_points//2:]))
         return Y_smooth.tolist()
+"""
+def smooth(Y, nb_points=20):
+    if Y == []:
+        return []
+    else:
+        Y = np.array(Y)
+        nb_points = nb_points // 2 * 2
+        indices = np.arange(-nb_points//2, nb_points//2+1)
+        Y_smooth = np.array([])
+        for i in range(len(Y)):
+            valid_indices = indices + i
+            valid_indices = valid_indices[(valid_indices >= 0) & (valid_indices < len(Y))]
+            Y_avg = np.mean(Y[valid_indices])
+            Y_smooth = np.append(Y_smooth, Y_avg)
+        return Y_smooth

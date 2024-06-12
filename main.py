@@ -53,8 +53,7 @@ class GUI:
         self.shift.set(1)
         self.bg_noise.set(1)
         self.deadtime.set(1)
-        self.load_data()
-        self.set_channel_pull_down_menu()
+        self.on_filter()
     
     def unselect_all_filters(self):
         # Set all variables to True
@@ -62,8 +61,7 @@ class GUI:
         self.shift.set(0)
         self.bg_noise.set(0)
         self.deadtime.set(0)
-        self.load_data()
-        self.set_channel_pull_down_menu()
+        self.on_filter()
 
     @staticmethod
     def clean(object):
@@ -267,7 +265,7 @@ class GUI:
         if file_names[0] != '' and file_names[1] != '':
             if file_names[2] == '':
                 file_names.pop()
-            file_names = [self.paths[file_name] for file_name in file_names]
+            file_names = [self.paths[file_name] for file_name in file_names]        
             self.calibration_data = get_polarization_data(file_names, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get())
             option_menu = tk.OptionMenu(self.channel_selection_frame, self.selected_chan, *self.calibration_data.keys(), command=self.set_v_star_menu_and_plot_calibration_data)
             chan_label = tk.Label(self.channel_selection_frame, text="Select channel :", **self.label_style, anchor='center')
@@ -292,6 +290,7 @@ class GUI:
     def set_v_star_interval(self):
         data_neg45, data_pos45 = self.calibration_data[self.selected_chan.get()][:2]
         interval = (int(self.v_star_min.get()), int(self.v_star_max.get()))
+        print(data_neg45[1][:20], data_pos45[1][:20], interval)
         V_star = get_V_star_constant(data_neg45, data_pos45, interval)
         if V_star is not None:
             self.v_star.set(str(V_star))
@@ -329,9 +328,10 @@ class GUI:
             file_path = self.paths[self.file_listbox.get(file_index)]
             if is_a_supported_file(file_path):
                 selected_files.append(file_path)
+                print(f'File {file_path} is supported')
             else:
                 print(f'File {file_path} is not supported')
-        self.data = get_data(selected_files, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get(), self.r2, average) if selected_files != [] else {}
+        self.data = get_data(selected_files, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get(), self.r2.get(), average) if selected_files != [] else {}
 
     def load_data(self, average=False):
         GUI.clean(self.chart_frames[0])
@@ -409,11 +409,11 @@ class GUI:
         self.config_menu.add_command(label="Set config directory", command=self.set_config_directory)
         self.config_menu.add_command(label = "Select all filters", command=self.select_all_filters)
         self.config_menu.add_command(label = "Unselect all filters", command=self.unselect_all_filters)
-        self.config_menu.add_checkbutton(label="E-Noise", variable=self.e_noise, command=self.load_data)
-        self.config_menu.add_checkbutton(label="Shift", variable=self.shift, command=self.load_data)
-        self.config_menu.add_checkbutton(label="Background Noise", variable=self.bg_noise, command=self.load_data)
-        self.config_menu.add_checkbutton(label="Deadtime", variable=self.deadtime, command=self.load_data)
-        self.config_menu.add_checkbutton(label="Deadtime", variable=self.deadtime, command=self.load_data)
+        self.config_menu.add_checkbutton(label="E-Noise", variable=self.e_noise, command=self.on_filter)
+        self.config_menu.add_checkbutton(label="Shift", variable=self.shift, command=self.on_filter)
+        self.config_menu.add_checkbutton(label="Background Noise", variable=self.bg_noise, command=self.on_filter)
+        self.config_menu.add_checkbutton(label="Deadtime", variable=self.deadtime, command=self.on_filter)
+        self.config_menu.add_checkbutton(label="PR2", variable=self.r2, command=self.on_filter)
         
     def configure_root(self):
         self.root.title("Austral GUI")
@@ -449,7 +449,6 @@ class GUI:
         self.smoot_calibration_data = {}
         self.initial_dir = './austral-data-sample/instruments/lilas/private/calibration/20210112/200449/' #'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
         self.config_dir = './austral-data-sample/instruments/lilas/private/config/lidar'
-        self.r2 = True
         self.paths = {} 
         self.selection_vars = []
         self.xlim = ((0, 5000), (0, 5000))
@@ -477,6 +476,7 @@ class GUI:
         self.e_noise = tk.IntVar(value=1)
         self.shift = tk.IntVar(value=1)
         self.deadtime = tk.IntVar(value=1)
+        self.r2 = tk.IntVar(value=1)
         self.selected_chan = tk.StringVar()
         self.multiple_selection_var = tk.IntVar()
         self.v_star_min = tk.StringVar(value="1000")

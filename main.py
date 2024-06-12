@@ -5,7 +5,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from licel_treatment import *
 import numpy as np
 from pypr2.Pr2Object import Pr2Object
-import warnings
 
 
 class GUI:
@@ -13,6 +12,7 @@ class GUI:
     def set_config_directory(self):
         self.config_dir = tk.filedialog.askdirectory(initialdir=self.config_dir)
 #r'./au stral-data-sample/instruments/lilas/private/measurement/2023/05/28')
+
     def open_file(self):
         file_paths = tk.filedialog.askopenfilenames(initialdir=self.initial_dir)
         for file_path in file_paths:
@@ -64,8 +64,8 @@ class GUI:
         self.on_filter()
 
     @staticmethod
-    def clean(object):
-        for widget in object.winfo_children():
+    def clean(object_):
+        for widget in object_.winfo_children():
             widget.destroy()
 
     def toggle_selection(self):
@@ -90,7 +90,8 @@ class GUI:
             self.paths.pop(self.file_listbox.get(i))
             self.file_listbox.delete(i)
             
-    def select(self, listbox):
+    @staticmethod
+    def select(listbox):
         curselection = listbox.curselection()
         if len(curselection) == 2:
             a, b = curselection
@@ -290,7 +291,6 @@ class GUI:
     def set_v_star_interval(self):
         data_neg45, data_pos45 = self.calibration_data[self.selected_chan.get()][:2]
         interval = (int(self.v_star_min.get()), int(self.v_star_max.get()))
-        print(data_neg45[1][:20], data_pos45[1][:20], interval)
         V_star = get_V_star_constant(data_neg45, data_pos45, interval)
         if V_star is not None:
             self.v_star.set(str(V_star))
@@ -328,7 +328,6 @@ class GUI:
             file_path = self.paths[self.file_listbox.get(file_index)]
             if is_a_supported_file(file_path):
                 selected_files.append(file_path)
-                print(f'File {file_path} is supported')
             else:
                 print(f'File {file_path} is not supported')
         self.data = get_data(selected_files, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get(), self.r2.get(), average) if selected_files != [] else {}
@@ -537,12 +536,11 @@ class GUI:
                 self.scale_entries[i][j].bind('<Return>', lambda event, x=i: self.set_scale(i=x))
         
         self.file_listbox.bind('<<ListboxSelect>>', self.on_select)
-        self.file_listbox.bind('<a>', lambda event: self.select(self.file_listbox))
+        self.file_listbox.bind('<a>', lambda event: GUI.select(self.file_listbox))
         self.chan_listbox.bind('<<ListboxSelect>>', self.plot_main_data)
-        self.chan_listbox.bind('<a>', lambda event: self.select(self.chan_listbox))
+        self.chan_listbox.bind('<a>', lambda event: GUI.select(self.chan_listbox))
         
     def run(self):
-        warnings.filterwarnings("ignore", message="TestResult has no addDuration method")
         self.root.mainloop()
     
 if __name__ == '__main__':   

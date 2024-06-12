@@ -1,8 +1,7 @@
 from licel_treatment import *
-from main import *
 import numpy as np
 from numpy import nan
-
+import pytest
 config = get_config(r'./austral-data-sample/instruments/lilas/private/config/lidar', *([False] * 4))
 config_dir=r'./austral-data-sample/instruments/lilas/private/config/lidar'
 directory = r'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
@@ -128,6 +127,19 @@ def test_make_data_regular():
     make_data_regular(*input_)
     assert (x, y) == expected_output
 
+def test_find_ylim():
+    x = [0.0, 7.5, 15.0, 22.5, 30.0, 37.5, 45.0, 52.5, 60.0, 67.5, 75.0, 82.5, 90.0, 97.5, 105.0, 112.5, 120.0, 127.5, 135.0, 142.5]
+    y1 = [nan, 77.2355141382399, 121.24605418865595, 69.5541352109456, 101.52957837324448, 73.13233731621308, 72.16862726291066, 71.83396862625638, 69.29290600924898, 70.58220877566575, 69.15013661686716, 71.88673771078146, 70.96130571692542, 72.45757852523636, 73.044034384553, 73.42840986330587, 71.60606325270618, 69.51517757295996, 65.27805501006938, 60.963416613824414] 
+    y2 = [nan, 73.22358859297711, 98.14230191282981, 70.15518659156514, 80.74845566698251, 76.08094439262128, 67.26325871541032, 71.98161023245088, 65.79527667506538, 69.79187248780681, 67.37178222134446, 69.57293828932639, 69.04076010549181, 68.94735764054217, 68.61470033972537, 69.59783226816694, 67.28000864967976, 63.684174781253674, 59.125224242698756, 55.01080302126245]
+    data_channel = ((x, y1), (x, y2))
+    xlim = (7, 130)
+    num_std = 5
+    input_ = (data_channel, xlim, num_std, 0)
+    expected_output = (18.25507324009014, 129.74003400155436)
+    actual_output = find_ylim(*input_)
+    assert actual_output == expected_output
+
+
 def test_is_a_supported_file():
     supported_file = './austral-data-sample/instruments/lilas/private/calibration/20210112/200449/l2111220.082534'
     not_supported_file = './austral-data-sample/instruments/lilas/private/calibration/20210112/200449/temp.dat'
@@ -140,7 +152,7 @@ def test_smooth():
     expected_output = [0.34886487000000005, 0.20982364250000002, 0.24873121, 0.3689774, 0.564578326, 0.651445536, 0.8332516179999999, 0.997795486, 1.096570044, 0.915426414, 0.9189897840000001, 0.961161372, 0.9323790559999999, 0.923566968, 0.9070149200000002, 0.910139346, 0.942280298, 0.854743526, 0.7242227699999999, 0.6347056819999999, 0.539272926, 0.428672372, 0.21654157000000002, 0.10624105399999999, 0.06016838, -0.03690070799999999, -0.171105046, -0.270065554, -0.41121489, -0.5555267199999999, -0.552697564, -0.682142026, -0.62357067, -0.737772184, -0.773580006, -0.826698464, -0.8707136779999999, -0.8434576680000001, -0.750178142, -0.748387784, -0.9061550979999999, -0.8498632779999999, -0.954957856, -0.9458484379999998, -0.7359347359999999, -0.7294361659999999, -0.651691088, -0.431747296, -0.35937976750000006, -0.47127909000000007]
     actual_output = smooth(*input_)
     assert expected_output == actual_output.tolist()
-    
+"""
 def test():
     test_get_data()
     test_decomp()
@@ -152,6 +164,9 @@ def test():
     test_average_interval()
     test_get_V_star_constant()
     test_make_data_regular()
+    test_find_ylim()
+    test_is_a_supported_file()
     test_smooth()
 
 test()
+"""

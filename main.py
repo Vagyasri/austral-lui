@@ -10,6 +10,9 @@ from pypr2.Pr2Object import Pr2Object
 class GUI:
     
     def set_config_directory(self):
+        print(self.config_dir)
+        self.config_dir = './austral-data-sample/instruments/lilas/private/config/lidar'
+        print(self.config_dir)
         self.config_dir = tk.filedialog.askdirectory(initialdir=self.config_dir)
 #r'./au stral-data-sample/instruments/lilas/private/measurement/2023/05/28')
 
@@ -433,29 +436,52 @@ class GUI:
         #self.root.wm_attributes('-zoomed', True)  # This line maximizes the window.
         #self.root.state('zoomed') same for windows
     
-    
-        
+    @staticmethod
+    def get_gui_config():
+        values = []
+        with open('./gui_config.txt', 'r') as file:
+            lines = file.readlines()
+        default_values = ['./austral-data-sample/instruments/lilas/private/calibration/20210112/200449/',
+                           './austral-data-sample/instruments/lilas/private/config/lidar',
+                           (0, 5000), (0, 5000), 3, True, 20, 0.004]
+        for i, line in enumerate(lines):
+            try:
+                value = line.split(': ')[1]
+                if ',' in value:
+                    values.append(tuple(map(int, value.split(', '))))
+                elif value.strip().isdigit():
+                    values.append(int(value.strip()))
+                elif value.strip() == 'Yes' or value.strip() == 'No':
+                    values.append(True if value.strip() == 'Yes' else False)
+                elif value.strip().replace('.', '', 1).isdigit():
+                    values.append(float(value.strip()))
+                else:
+                    values.append(value.strip())
+            except:
+                values.append(default_values[i])
+        b, a = values.pop(), values.pop()
+        values.append((a, b))
+        return values
 
     def __init__(self):
         self.root = tk.Tk()
 
+        self.initial_dir, self.config_dir, self.num_std, self.smooth, self.smooth_lvl, self.c_star, self.xlim = GUI.get_gui_config()
+        print(self.initial_dir, self.config_dir, self.num_std, self.smooth, self.smooth_lvl, self.c_star, self.xlim)
+        for value in (self.initial_dir, self.config_dir, self.num_std, self.smooth, self.smooth_lvl, self.c_star, self.xlim):
+            print(type(value))
         self.data = {}
         self.calibration_data = {}
-        self.initial_dir = './austral-data-sample/instruments/lilas/private/calibration/20210112/200449/' #'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
-        self.config_dir = './austral-data-sample/instruments/lilas/private/config/lidar'
         self.paths = {} 
         self.selection_vars = []
-        self.xlim = ((0, 5000), (0, 5000))
         self.y_log_low_lim = 0.0001
         self.axes = [None, None]
-        self.num_std = 3
         self.default_channels = []
-        self.smooth = True
         self.calib_curves = []
-        self.smooth_lvl = 20
-        self.c_star = 4 / 1000
+    
         
         self.bg = '#de755e'
+        self.colour = '#B8614E'
         self.w, self.h = 700, 500
         self.curve_type = ['linear', 'linear'] #linear, log, etc
         self.plot_label_font = {'family': 'serif', 'color': 'black', 'weight': 'normal', 'size': 12}
@@ -480,15 +506,15 @@ class GUI:
         self.notebook.add(self.tabs[1], text='Calibration Depolarization')
         
         
-        self.chart_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
-        self.licel_selection_frame = tk.Frame(self.tabs[1], bg='#B8614E')
-        self.channel_selection_frame = tk.Frame(self.tabs[1], bg='#B8614E')
-        self.v_star_frame = tk.Frame(self.tabs[1], bg='#B8614E')
-        self.scale_entries_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
-        self.file_listbox_frame = tk.Frame(self.root, bg='#B8614E')
-        self.chan_listbox_frame = tk.Frame(self.tabs[0], bg='#B8614E')
-        self.titles_frames = tuple([tk.Frame(tab, bg='#B8614E') for tab in self.tabs])
-        self.multiple_selection_frame = tk.Frame(self.root, bg='#B8614E')
+        self.chart_frames = tuple([tk.Frame(tab, bg=self.colour) for tab in self.tabs])
+        self.licel_selection_frame = tk.Frame(self.tabs[1], bg=self.colour)
+        self.channel_selection_frame = tk.Frame(self.tabs[1], bg=self.colour)
+        self.v_star_frame = tk.Frame(self.tabs[1], bg=self.colour)
+        self.scale_entries_frames = tuple([tk.Frame(tab, bg=self.colour) for tab in self.tabs])
+        self.file_listbox_frame = tk.Frame(self.root, bg=self.colour)
+        self.chan_listbox_frame = tk.Frame(self.tabs[0], bg=self.colour)
+        self.titles_frames = tuple([tk.Frame(tab, bg=self.colour) for tab in self.tabs])
+        self.multiple_selection_frame = tk.Frame(self.root, bg=self.colour)
 
         self.file_listbox = tk.Listbox(self.file_listbox_frame, width=16, selectmode=tk.SINGLE, exportselection=False) #or selectmode=tk.MULTIPLE
         self.chan_listbox = tk.Listbox(self.chan_listbox_frame, width = 10, selectmode=tk.MULTIPLE, exportselection=False)

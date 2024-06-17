@@ -7,6 +7,10 @@ config_dir=r'./austral-data-sample/instruments/lilas/private/config/lidar'
 directory = r'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
 filenames = [directory + file_name for file_name in ['l2352800.005799', 'l2352800.015859', 'l2352800.025916', 'l2352800.035973']]
 
+def arrays_are_equal(a, b):
+    a, b = np.array(a), np.array(b)
+    return np.array_equal(np.isnan(a), np.isnan(b)) and np.array_equal(a[~np.isnan(a)], b[~np.isnan(b)])
+
 def test_select_all_chan():
     gui = GUI()
     for i in range(65, 91):
@@ -173,6 +177,66 @@ def test_set_chan_listbox():
     assert gui.unselectall_button.grid_info()
     assert gui.default_button.grid_info()
 
+
+def test_validate():
+    assert GUI.validate('')
+    assert GUI.validate('5446816')
+    assert not GUI.validate('5446816.5')
+    assert not GUI.validate('-5446816')
+    assert not GUI.validate('abcd')
+
+def test_set_v_star_interval():
+    gui = GUI()
+    x = [i*500+2500 for i in range(7)]
+    gui.calibration_data = {'355PC': ((x, [i for i in range(7)]), (x, [i*0.8 for i in range(7)]), (None, None)),
+                            '1064A': ((x, [i*0.7 for i in range(7)]), (x, [i*0.9 for i in range(7)]), (None, None))}
+    gui.selected_chan.set('355PC')
+    try:
+        gui.set_v_star_interval()
+    except TypeError:
+        pass
+    expected_v_star = '0.4472135954999579'
+    actual_v_star = gui.v_star.get()
+    assert actual_v_star == expected_v_star
+
+def set_data_with_selected_files(self, average):
+    selected_files_indexes = self.file_listbox.curselection()
+    selected_files= []
+    for file_index in selected_files_indexes:
+        file_path = self.paths[self.file_listbox.get(file_index)]
+        if is_a_supported_file(file_path):
+            selected_files.append(file_path)
+        else:
+            print(f'File {file_path} is not supported')
+    self.data = get_data(selected_files, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get(), self.r2.get(), average) if selected_files != [] else {}
+
+def test_set_data_with_selected_files():
+    gui = GUI()
+    for file_path in filenames:
+        file_name = file_path.split('/')[-1]
+        gui.paths[file_name] = file_path
+        gui.file_listbox.insert(tk.END, file_path.split('/')[-1])
+    gui.file_listbox.select_set(0, tk.END)
+    gui.set_data_with_selected_files(False)
+    expected_data = [nan, 4.678408131673821, 18.713632526695285, -0.030861447352592785, 74.85453010678114, 93.5450945967458, 100.99144491503156, 183.34838540962176, 359.36838273302374, 378.9510586655796, 467.8408131673822, 226.14301056101039, 403.96577966012626, 1265.6295535300737, 4409.300582805835, 4005.7474090967476, 5518.7383889636785, 12207.357967871427, 10942.138054648343, 16268.391145289654]
+    expected_keys = dict.fromkeys(['355.p_AN', '355.p_PC', '355.s_AN', '355.s_PC', '371.o_PC', '387.o_AN', '387.o_PC', '408.p_AN', '408.p_PC', '408.s_AN', '408.s_PC', '460.p_PC', '460.s_AN', '460.s_PC', '530.o_AN', '530.o_PC', '532.p_AN', '532.p_PC', '532.s_AN', '532.s_PC', '1064.p_AN', '1064.s_AN']).keys()
+    assert expected_keys == gui.data.keys()
+    assert arrays_are_equal(expected_data, gui.data['371.o_PC'][1][:20])
+
+def test_place_elements():
+    gui = GUI()
+    Widgets = (
+        list(gui.chart_frames) + list(gui.scale_entries_frames) + list(gui.titles_frames) + list(gui.titles_labels) +
+        [w for widgets in gui.scale_labels for w in widgets] + 
+        [w for widgets in gui.scale_entries for w in widgets] + 
+        list(gui.scale_buttons) + list(gui.scale_log_buttons) + 
+        [gui.notebook, gui.chan_listbox_frame, gui.licel_selection_frame, gui.channel_selection_frame, gui.v_star_frame]
+    )
+    for widget in Widgets:
+        assert widget.grid_info()
+    
+
+"""
 def test():
     test_select_all_chan()
     test_unselect_all_chan()
@@ -188,4 +252,9 @@ def test():
     test_get_data_channel()
     test_get_selected_licels()
     test_set_chan_listbox()
+    test_validate()
+    test_set_v_star_interval()
+    test_set_data_with_selected_files()
+    test_place_elements()
 test()
+"""

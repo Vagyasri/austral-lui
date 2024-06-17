@@ -151,7 +151,7 @@ class GUI:
     
     def get_data_channel(self, i):
         return self.calibration_data[self.selected_chan.get()] if i else [self.data[self.chan_listbox.get(channel_index)] for channel_index in self.chan_listbox.curselection()]
-    
+
     def set_scale(self, event=None, i=1):
         a, b = self.scale_entries[i][0].get(), self.scale_entries[i][1].get()
         if a!= b and a!= '' and b!= '' and self.axes[i] is not None:
@@ -164,6 +164,18 @@ class GUI:
             self.axes[i].set_ylim(*ylim)
             self.axes[i].figure.canvas.draw()
 
+    def toggle_log(self, i):
+        if self.axes[i]:
+            ylim = find_ylim(self.get_data_channel(i), self.axes[i].get_xlim(), self.num_std, i)
+            if self.curve_type[i] == 'log':
+                self.curve_type[i] = 'linear'
+            else:
+                self.curve_type[i] = 'log'
+                ylim = (max(ylim[0], ylim[1]*self.y_log_low_lim), ylim[1])
+            self.axes[i].set_yscale(self.curve_type[i])
+            self.axes[i].set_ylim(*ylim)
+            self.axes[i].figure.canvas.draw()
+
     def get_ax_with_calibration_curves(self, ax, x1, y1, x2, y2):
         if self.smooth:
             y1, y2 = smooth(y1, self.smooth_lvl), smooth(y2, self.smooth_lvl)
@@ -171,7 +183,6 @@ class GUI:
             curve1, = ax.plot(x1, y1, label='+45')
             curve2, = ax.plot(x2, y2, label='-45')
             self.calib_curves = [curve1, curve2]
-
             x, y = get_v_star_points(x1, y1, x2, y2)
             if y:
                 curve, = ax.plot(x, y, label='V* (-)')
@@ -255,8 +266,8 @@ class GUI:
             label.grid(sticky='ew', padx=5, pady=5)
             option_menu.grid(sticky='nsew')
             self.selection_vars.append(selected_option)
-        self.set_button = tk.Button(self.licel_selection_frame, text="Set", command=self.set_channel_pull_down_menu, bg='white')
-        self.set_button.grid(sticky='ew')
+        set_button = tk.Button(self.licel_selection_frame, text="Set", command=self.set_channel_pull_down_menu, bg='white')
+        set_button.grid(sticky='ew')
 
     def set_channel_pull_down_menu(self):
         GUI.clean(self.channel_selection_frame)
@@ -305,7 +316,7 @@ class GUI:
         max_label = tk.Label(self.v_star_frame, text="Select Max :", **self.label_style, anchor='e')
         v_star_label = tk.Label(self.v_star_frame, text="V* : ", **self.label_style, anchor='e')
         checkbutton_unplot_45 = tk.Checkbutton(self.v_star_frame, text="Unplot", variable=self.unplot_var, command=self.unplot_45, bg='white')
-        button_set_intervals = tk.Button(self.v_star_frame, text="Set Interval", command=self.set_v_star_interval, bg='white')
+        button_set_interval = tk.Button(self.v_star_frame, text="Set Interval", command=self.set_v_star_interval, bg='white')
         min_entry.grid(column=1, row=0, sticky='nsew')
         max_entry.grid(column=1, row=1, sticky='nsew')
         v_star_entry.grid(column=1, row=3, sticky='nsew')
@@ -313,7 +324,7 @@ class GUI:
         max_label.grid(column=0, row=1, sticky='nsew', padx=5, pady=5)
         v_star_label.grid(column=0, row=3, sticky='nsew', padx=5, pady=5)
         checkbutton_unplot_45.grid(column=0, row=4, columnspan=2, sticky='nsew')
-        button_set_intervals.grid(column=0, row=2, columnspan=2, sticky='nsew')
+        button_set_interval.grid(column=0, row=2, columnspan=2, sticky='nsew')
     
     def set_v_star_menu_and_plot_calibration_data(self, event):
         self.set_v_star_menu()
@@ -419,25 +430,10 @@ class GUI:
         #self.root.geometry(f'{self.w}x{self.h}')
         self.root.config(bg=self.bg)
         self.root.config(menu=self.menubar)
-
-        #self.root.state('zoomed') for windows
         #self.root.wm_attributes('-zoomed', True)  # This line maximizes the window.
-
-    @staticmethod
-    def rien():
-        pass
+        #self.root.state('zoomed') same for windows
     
-    def toggle_log(self, i):
-        if self.axes[i]:
-            ylim = find_ylim(self.get_data_channel(i), self.axes[i].get_xlim(), self.num_std, i)
-            if self.curve_type[i] == 'log':
-                self.curve_type[i] = 'linear'
-            else:
-                self.curve_type[i] = 'log'
-                ylim = (max(ylim[0], ylim[1]*self.y_log_low_lim), ylim[1])
-            self.axes[i].set_yscale(self.curve_type[i])
-            self.axes[i].set_ylim(*ylim)
-            self.axes[i].figure.canvas.draw()
+    
         
 
     def __init__(self):
@@ -445,7 +441,6 @@ class GUI:
 
         self.data = {}
         self.calibration_data = {}
-        self.smoot_calibration_data = {}
         self.initial_dir = './austral-data-sample/instruments/lilas/private/calibration/20210112/200449/' #'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
         self.config_dir = './austral-data-sample/instruments/lilas/private/config/lidar'
         self.paths = {} 
@@ -462,14 +457,9 @@ class GUI:
         
         self.bg = '#de755e'
         self.w, self.h = 700, 500
-        self.figure_width = 5  # in inches
-        self.figure_height = 5
         self.curve_type = ['linear', 'linear'] #linear, log, etc
         self.plot_label_font = {'family': 'serif', 'color': 'black', 'weight': 'normal', 'size': 12}
         self.label_style = {'background':self.bg, 'font':('Times New Roman', 12)}
-        self.dpi = self.root.winfo_fpixels('1i')  # pixels per inch
-        self.canvas_width = int(self.dpi * self.figure_width)
-        self.canvas_height = int(self.dpi * self.figure_height)
         
         self.bg_noise = tk.IntVar(value=1)
         self.e_noise = tk.IntVar(value=1)
@@ -483,7 +473,7 @@ class GUI:
         self.v_star = tk.StringVar()
         self.unplot_var = tk.IntVar()
         self.vcmd = self.root.register(GUI.validate)
-
+        
         self.notebook = ttk.Notebook(self.root)
         self.tabs = (ttk.Frame(self.notebook), ttk.Frame(self.notebook))
         self.notebook.add(self.tabs[0], text='Lidar Profiles')
@@ -517,7 +507,7 @@ class GUI:
         self.unselect_all_files_button = tk.Button(self.multiple_selection_frame, text="Unselect All", command=self.unselect_all_files, bg='white')
 
         self.titles_labels = (tk.Label(self.titles_frames[0], text="Data from files", **self.label_style, anchor='center'),
-                             tk.Label(self.titles_frames[1], text="Calibration", **self.label_style, anchor='center'))
+                              tk.Label(self.titles_frames[1], text="Calibration", **self.label_style, anchor='center'))
         self.scale_labels =  tuple([tuple([tk.Label(self.scale_entries_frames[j], text=('Min :', 'Max :')[i], **self.label_style, anchor='e') for i in range(2)]) for j in range(2)])
         self.scale_entries = tuple([tuple([tk.Entry(self.scale_entries_frames[j], width=8, validate="key", validatecommand=(self.vcmd, '%P')) for i in range(2)]) for j in range(2)])
         

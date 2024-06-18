@@ -48,7 +48,10 @@ class GUI:
 
     def on_filter(self):
         self.load_data()
-        self.set_channel_pull_down_menu()
+        if self.selected_chan.get():
+            self.set_channel_pull_down_menu()
+        
+
 
     def select_all_filters(self):
         # Set all variables to True
@@ -467,9 +470,6 @@ class GUI:
         self.root = tk.Tk()
 
         self.initial_dir, self.config_dir, self.num_std, self.smooth, self.smooth_lvl, self.c_star, self.xlim = GUI.get_gui_config()
-        print(self.initial_dir, self.config_dir, self.num_std, self.smooth, self.smooth_lvl, self.c_star, self.xlim)
-        for value in (self.initial_dir, self.config_dir, self.num_std, self.smooth, self.smooth_lvl, self.c_star, self.xlim):
-            print(type(value))
         self.data = {}
         self.calibration_data = {}
         self.paths = {} 

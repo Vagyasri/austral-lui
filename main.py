@@ -50,8 +50,6 @@ class GUI:
         self.load_data()
         if self.selected_chan.get():
             self.set_channel_pull_down_menu()
-        
-
 
     def select_all_filters(self):
         # Set all variables to True
@@ -91,11 +89,19 @@ class GUI:
             self.file_listbox.config(selectmode=tk.SINGLE)
             self.file_listbox.bind('<<ListboxSelect>>', self.on_select)
 
+    def clean_all(self):
+        GUI.clean(self.licel_selection_frame)
+        GUI.clean(self.channel_selection_frame)
+        GUI.clean(self.v_star_frame)
+
     def delete_selected_files(self):
         for i in self.file_listbox.curselection()[::-1]:
             self.paths.pop(self.file_listbox.get(i))
             self.file_listbox.delete(i)
-            
+        if self.file_listbox.get(0, tk.END):
+            self.set_licel_pull_down_menu()
+        else:
+            self.clean_all()
     @staticmethod
     def select(listbox):
         curselection = listbox.curselection()
@@ -262,6 +268,7 @@ class GUI:
     def set_licel_pull_down_menu(self):
         GUI.clean(self.licel_selection_frame)
         GUI.clean(self.channel_selection_frame)
+        GUI.clean(self.v_star_frame)
         self.selection_vars = []
         selected_files = self.file_listbox.get(0, tk.END)
         txt_labels = ['Select file +45 :', 'Select file -45 :', 'Select file 0 :']

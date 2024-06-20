@@ -125,10 +125,11 @@ def find_ylim(data_channel, xlim, num_std, i):
         mask = (xlim_min <= X) & (X <= xlim_max)
         y_range = np.array(Y)[mask]
         y_range = np.where(y_range <= 0, np.nan, y_range)
-        mean, std = np.nanmean(y_range), np.nanstd(y_range)
-        return mean - num_std*std, mean + num_std*std
-    else:
+        if y_range.tolist():
+            mean, std = np.nanmean(y_range), np.nanstd(y_range)
+            return mean - num_std*std, mean + num_std*std
         return 0, 1
+    return 0, 1
 
 def is_a_supported_file(file_name):
     try:

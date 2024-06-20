@@ -10,9 +10,7 @@ from pypr2.Pr2Object import Pr2Object
 class GUI:
     
     def set_config_directory(self):
-        print(self.config_dir)
         self.config_dir = './austral-data-sample/instruments/lilas/private/config/lidar'
-        print(self.config_dir)
         self.config_dir = tk.filedialog.askdirectory(initialdir=self.config_dir)
 #r'./au stral-data-sample/instruments/lilas/private/measurement/2023/05/28')
 
@@ -166,7 +164,7 @@ class GUI:
 
     def set_scale(self, event=None, i=1):
         a, b = self.scale_entries[i][0].get(), self.scale_entries[i][1].get()
-        if a!= b and a!= '' and b!= '' and self.axes[i] is not None:
+        if a != b and a != '' and b != '' and self.axes[i] is not None:
             xlim = tuple(sorted([float(a), float(b)]))
             data_channel = self.get_data_channel(i)
             self.axes[i].set_xlim(*xlim)
@@ -283,19 +281,27 @@ class GUI:
         set_button.grid(sticky='ew')
 
     def set_channel_pull_down_menu(self):
-        GUI.clean(self.channel_selection_frame)
-        GUI.clean(self.v_star_frame)
-        self.selected_chan.set('')
+        
         file_names = [var.get() for var in self.selection_vars]
         if file_names[0] != '' and file_names[1] != '':
             if file_names[2] == '':
                 file_names.pop()
-            file_names = [self.paths[file_name] for file_name in file_names]        
-            self.calibration_data = get_polarization_data(file_names, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get())
+            file_paths = []
+            for file_name in file_names:
+                file_path = self.paths[file_name]
+                if not is_a_supported_file(file_path):
+                    print(f'File {file_path} is not supported')
+                    return
+                file_paths.append(file_path)  
+            GUI.clean(self.channel_selection_frame)
+            GUI.clean(self.v_star_frame)
+            self.selected_chan.set('')    
+            self.calibration_data = get_polarization_data(file_paths, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get())
             option_menu = tk.OptionMenu(self.channel_selection_frame, self.selected_chan, *self.calibration_data.keys(), command=self.set_v_star_menu_and_plot_calibration_data)
             chan_label = tk.Label(self.channel_selection_frame, text="Select channel :", **self.label_style, anchor='center')
             chan_label.grid(sticky='ew', padx=5, pady=5)
             option_menu.grid(sticky='nsew')
+
             
     def unplot_45(self):
         if self.unplot_var.get():

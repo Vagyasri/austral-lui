@@ -207,10 +207,10 @@ class GUI:
             if len(calibration_data_channel) > 2:
                 ax.axhline(y=self.c_star, linestyle='--', label='c*', color='pink')
                 x3, y3 = calibration_data_channel[2]
-                y3 = [y * v_star for y in y3]
+                y3 = [y * v_star if v_star < 1 else y / v_star for y in y3]
                 if self.smooth:
                     y3 = smooth(y3, self.smooth_lvl)
-                ax.plot(x3, y3, label='corrected 0')
+                ax.plot(x3, y3, label='VDR 0')
         return ax
     
     def get_calibration_figure(self):
@@ -292,11 +292,16 @@ class GUI:
                 if not is_a_supported_file(file_path):
                     print(f'File {file_path} is not supported')
                     return
-                file_paths.append(file_path)  
+                file_paths.append(file_path) 
+            try:
+                self.calibration_data = get_polarization_data(file_paths, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get())
+            except FileNotFoundError:
+                print(f'Configuration directory {self.config_dir} is incomplete')
+                return 
             GUI.clean(self.channel_selection_frame)
             GUI.clean(self.v_star_frame)
-            self.selected_chan.set('')    
-            self.calibration_data = get_polarization_data(file_paths, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get())
+            self.selected_chan.set('')   
+            
             option_menu = tk.OptionMenu(self.channel_selection_frame, self.selected_chan, *self.calibration_data.keys(), command=self.set_v_star_menu_and_plot_calibration_data)
             chan_label = tk.Label(self.channel_selection_frame, text="Select channel :", **self.label_style, anchor='center')
             chan_label.grid(sticky='ew', padx=5, pady=5)
@@ -324,6 +329,7 @@ class GUI:
         V_star = get_V_star_constant(data_neg45, data_pos45, interval)
         if V_star is not None:
             self.v_star.set(str(V_star))
+            self.v_star_inv.set(str(1/V_star))
         self.plot_calibration_data()
 
     def set_v_star_menu(self):
@@ -331,18 +337,22 @@ class GUI:
         min_entry = tk.Entry(self.v_star_frame, textvariable=self.v_star_min, width=10, validate="key", validatecommand=(self.vcmd, '%P'))
         max_entry = tk.Entry(self.v_star_frame, textvariable=self.v_star_max, width=10, validate="key", validatecommand=(self.vcmd, '%P'))
         v_star_entry = tk.Entry(self.v_star_frame, textvariable=self.v_star, width=10, state='readonly')
+        v_star_inv_entry = tk.Entry(self.v_star_frame, textvariable=self.v_star_inv, width=10, state='readonly')
         min_label = tk.Label(self.v_star_frame, text="Select Min :", **self.label_style, anchor='e')
         max_label = tk.Label(self.v_star_frame, text="Select Max :", **self.label_style, anchor='e')
         v_star_label = tk.Label(self.v_star_frame, text="V* : ", **self.label_style, anchor='e')
+        v_star_inv_label = tk.Label(self.v_star_frame, text="1/V* : ", **self.label_style, anchor='e')
         checkbutton_unplot_45 = tk.Checkbutton(self.v_star_frame, text="Unplot", variable=self.unplot_var, command=self.unplot_45, bg='white')
         button_set_interval = tk.Button(self.v_star_frame, text="Set Interval", command=self.set_v_star_interval, bg='white')
         min_entry.grid(column=1, row=0, sticky='nsew')
         max_entry.grid(column=1, row=1, sticky='nsew')
         v_star_entry.grid(column=1, row=3, sticky='nsew')
+        v_star_inv_entry.grid(column=1, row=4, sticky='nsew')
         min_label.grid(column=0, row=0, sticky='nsew', padx=5, pady=(5, 0))
         max_label.grid(column=0, row=1, sticky='nsew', padx=5, pady=5)
         v_star_label.grid(column=0, row=3, sticky='nsew', padx=5, pady=5)
-        checkbutton_unplot_45.grid(column=0, row=4, columnspan=2, sticky='nsew')
+        v_star_inv_label.grid(column=0, row=4, sticky='nsew', padx=5, pady=5)
+        checkbutton_unplot_45.grid(column=0, row=5, columnspan=2, sticky='nsew')
         button_set_interval.grid(column=0, row=2, columnspan=2, sticky='nsew')
     
     def set_v_star_menu_and_plot_calibration_data(self, event):
@@ -360,7 +370,11 @@ class GUI:
                 selected_files.append(file_path)
             else:
                 print(f'File {file_path} is not supported')
-        self.data = get_data(selected_files, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get(), self.r2.get(), average) if selected_files != [] else {}
+        try:
+            self.data = get_data(selected_files, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get(), self.r2.get(), average) if selected_files != [] else {}
+        except FileNotFoundError:
+            print(f'Configuration directory {self.config_dir} is incomplete')
+        
 
     def load_data(self, average=False):
         GUI.clean(self.chart_frames[0])
@@ -510,6 +524,7 @@ class GUI:
         self.v_star_min = tk.StringVar(value="1000")
         self.v_star_max = tk.StringVar(value="3000")
         self.v_star = tk.StringVar()
+        self.v_star_inv = tk.StringVar()
         self.unplot_var = tk.IntVar()
         self.vcmd = self.root.register(GUI.validate)
         

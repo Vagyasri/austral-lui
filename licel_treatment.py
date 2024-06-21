@@ -75,15 +75,15 @@ def get_calibration_pairs(data):
     return calibration_pairs
 
 #return s/p for each channel pair of one file
-def get_calibration_data(data):
+def get_calibration_data(data, invert=False):
     pairs = get_calibration_pairs(data)
-    return {Pr2Object.get_calibration_header(p): (data[s][0], [data[s][1][i] / data[p][1][i] for i in range(min(len(data[s][0]), len(data[p][0])))]) for p, s in pairs}
+    return {Pr2Object.get_calibration_header(p): (data[s][0], [data[p][1][i] / data[s][1][i] if invert else data[s][1][i] / data[p][1][i] for i in range(min(len(data[s][0]), len(data[p][0])))]) for p, s in pairs}
 
 #return a dictionnary with shape {channel pair: ((+45° ranges, +45° power ratios), (-45° ranges, -45° power ratios), (0° ranges, 0° power ratios)<-optional} with types {str: ((list, list), (list, list), (list, list)<- optional)}
 def get_polarization_data(paths, config_dir, shift, bg_noise, e_noise, deadtime):
     all_data = []
-    for path in paths:
-        all_data.append(get_calibration_data(get_data(path, config_dir, shift, bg_noise, e_noise, deadtime)))
+    for i, path in enumerate(paths):
+        all_data.append(get_calibration_data(get_data(path, config_dir, shift, bg_noise, e_noise, deadtime), i==2))
     polar_data = {}
     for chan in all_data[0]:
         if chan in all_data[1]:
@@ -137,21 +137,7 @@ def is_a_supported_file(file_name):
         return True
     except Pr2ObjectException:
         return False
-"""
-def smooth(Y, nb_points=20):
-    if Y == []:
-        return []
-    else:
-        Y = np.array(Y)
-        nb_points = nb_points // 2 * 2
-        indices = np.arange(-nb_points//2, nb_points//2+1)
-        Y_smooth = np.array([])
-        for i in range(nb_points//2, len(Y) - nb_points//2):
-            Y_avg = np.nanmean(Y[i + indices])
-            Y_smooth = np.append(Y_smooth, Y_avg)
-        Y_smooth = np.concatenate((Y[:nb_points//2], Y_smooth, Y[-nb_points//2:]))
-        return Y_smooth.tolist()
-"""
+
 def smooth(Y, nb_points=20):
     if Y == []:
         return []

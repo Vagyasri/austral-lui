@@ -106,24 +106,7 @@ class GUI:
         if len(curselection) == 2:
             a, b = curselection
             listbox.select_set(a, b)
-    """
-    @staticmethod
-    def get_color(channel, i):
-        if i:
-            waveln = int(channel.split('A')[0].split('P')[0])
-        else:
-            waveln = int(channel.split('.')[0])
-        if waveln < 400:
-            return '#A600D5'
-        elif waveln == 408:
-            return '#8108FF'
-        elif waveln == 460:
-            return '#0051FF'
-        elif 529 < waveln < 533:
-            return '#BCFF00'
-        else:
-            return '#AF0000'
-    """
+
     def get_new_fig(self):
         fig = plt.Figure()
         fig.tight_layout()
@@ -263,6 +246,31 @@ class GUI:
                 pass
         self.plot_main_data()
     
+    def set_selected_0_files_and_quit(self, listbox, popup):
+        self.selected_0_files = [listbox.get(i) for i in listbox.curselection()]
+        popup.destroy()
+
+    def create_popup(self):
+        if self._0_var.get():
+            popup = tk.Toplevel()
+            popup.title("Select 0 files for average")
+            listbox = tk.Listbox(popup, selectmode=tk.MULTIPLE)
+            listbox.pack()
+            listbox.bind('<a>', lambda event: GUI.select(listbox))
+            for file in self.file_listbox.get(0, tk.END):
+                listbox.insert(tk.END, file)
+            for file in self.selected_0_files:
+                try:
+                    listbox.selection_set(listbox.get(0, tk.END).index(file))
+                except ValueError:
+                    pass
+            ok_button = tk.Button(popup, text="OK", command=lambda : self.set_selected_0_files_and_quit(listbox, popup))
+            ok_button.pack()
+            popup.wait_visibility()
+            popup.grab_set()
+        else:
+            self.selected_0_files = []
+
     def set_licel_pull_down_menu(self):
         GUI.clean(self.licel_selection_frame)
         GUI.clean(self.channel_selection_frame)
@@ -270,22 +278,21 @@ class GUI:
         self.selection_vars = []
         selected_files = self.file_listbox.get(0, tk.END)
         txt_labels = ['Select file +45 :', 'Select file -45 :', 'Select file 0 :']
-        for i in range(3):
+        for i in range(2):
             selected_option = tk.StringVar()
             option_menu = tk.OptionMenu(self.licel_selection_frame, selected_option, *selected_files)
             label = tk.Label(self.licel_selection_frame, text=txt_labels[i], **self.label_style, anchor='center')
             label.grid(sticky='ew', padx=5, pady=5)
             option_menu.grid(sticky='nsew')
             self.selection_vars.append(selected_option)
+        select_0_files_button = tk.Checkbutton(self.licel_selection_frame, text="Select 0 files", variable=self._0_var, command=self.create_popup)
         set_button = tk.Button(self.licel_selection_frame, text="Set", command=self.set_channel_pull_down_menu, bg='white')
+        select_0_files_button.grid(sticky='ew')
         set_button.grid(sticky='ew')
 
     def set_channel_pull_down_menu(self):
-        
-        file_names = [var.get() for var in self.selection_vars]
+        file_names = [var.get() for var in self.selection_vars] + self.selected_0_files
         if file_names[0] != '' and file_names[1] != '':
-            if file_names[2] == '':
-                file_names.pop()
             file_paths = []
             for file_name in file_names:
                 file_path = self.paths[file_name]
@@ -505,6 +512,7 @@ class GUI:
         self.axes = [None, None]
         self.default_channels = []
         self.calib_curves = []
+        self.selected_0_files = []
     
         
         self.bg = '#de755e'
@@ -526,6 +534,7 @@ class GUI:
         self.v_star = tk.StringVar()
         self.v_star_inv = tk.StringVar()
         self.unplot_var = tk.IntVar()
+        self._0_var = tk.IntVar()
         self.vcmd = self.root.register(GUI.validate)
         
         self.notebook = ttk.Notebook(self.root)
@@ -590,3 +599,5 @@ class GUI:
 if __name__ == '__main__':   
     gui = GUI()
     gui.run()
+
+

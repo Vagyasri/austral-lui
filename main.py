@@ -171,8 +171,8 @@ class GUI:
 
     def get_ax_with_calibration_curves(self, ax, x1, y1, x2, y2):
         if self.smooth:
-            y1, y2 = smooth(y1, self.smooth_lvl), smooth(y2, self.smooth_lvl)
-        if not self.unplot_var.get():
+            y1, y2 = smooth(y1, self.smooth_lvl.get()), smooth(y2, self.smooth_lvl.get())
+        if self.unplot_var.get():
             curve1, = ax.plot(x1, y1, label='+45')
             curve2, = ax.plot(x2, y2, label='-45')
             self.calib_curves = [curve1, curve2]
@@ -192,7 +192,7 @@ class GUI:
                 x3, y3 = calibration_data_channel[2]
                 y3 = [y * v_star if v_star < 1 else y / v_star for y in y3]
                 if self.smooth:
-                    y3 = smooth(y3, self.smooth_lvl)
+                    y3 = smooth(y3, self.smooth_lvl.get())
                 ax.plot(x3, y3, label='VDR 0')
         return ax
     
@@ -248,10 +248,13 @@ class GUI:
     
     def set_selected_0_files_and_quit(self, listbox, popup):
         self.selected_0_files = [listbox.get(i) for i in listbox.curselection()]
+        if self.selected_0_files:
+            self._0_var.set(1)
         popup.destroy()
 
     def create_popup(self):
         if self._0_var.get():
+            self._0_var.set(0)
             popup = tk.Toplevel()
             popup.title("Select 0 files for average")
             listbox = tk.Listbox(popup, selectmode=tk.MULTIPLE)
@@ -311,12 +314,16 @@ class GUI:
             
             option_menu = tk.OptionMenu(self.channel_selection_frame, self.selected_chan, *self.calibration_data.keys(), command=self.set_v_star_menu_and_plot_calibration_data)
             chan_label = tk.Label(self.channel_selection_frame, text="Select channel :", **self.label_style, anchor='center')
+            smooth_potentio_label = tk.Label(self.channel_selection_frame, text="Smooth points :", **self.label_style, anchor='center')
+            potentio = tk.Scale(self.channel_selection_frame, from_=3, to=81, orient=tk.HORIZONTAL, variable=self.smooth_lvl)
             chan_label.grid(sticky='ew', padx=5, pady=5)
             option_menu.grid(sticky='nsew')
+            smooth_potentio_label.grid(sticky='ew', padx=5, pady=5)
+            potentio.grid(sticky='ew', padx=5, pady=5)
 
             
     def unplot_45(self):
-        if self.unplot_var.get():
+        if not self.unplot_var.get():
             for calib_curve in self.calib_curves:
                 calib_curve.remove()
             self.axes[1].legend()
@@ -349,7 +356,7 @@ class GUI:
         max_label = tk.Label(self.v_star_frame, text="Select Max :", **self.label_style, anchor='e')
         v_star_label = tk.Label(self.v_star_frame, text="V* : ", **self.label_style, anchor='e')
         v_star_inv_label = tk.Label(self.v_star_frame, text="1/V* : ", **self.label_style, anchor='e')
-        checkbutton_unplot_45 = tk.Checkbutton(self.v_star_frame, text="Unplot", variable=self.unplot_var, command=self.unplot_45, bg='white')
+        checkbutton_unplot_45 = tk.Checkbutton(self.v_star_frame, text="Display Calib Curves", variable=self.unplot_var, command=self.unplot_45, bg='white')
         button_set_interval = tk.Button(self.v_star_frame, text="Set Interval", command=self.set_v_star_interval, bg='white')
         min_entry.grid(column=1, row=0, sticky='nsew')
         max_entry.grid(column=1, row=1, sticky='nsew')
@@ -504,6 +511,7 @@ class GUI:
         self.root = tk.Tk()
 
         self.initial_dir, self.config_dir, self.num_std, self.smooth, self.smooth_lvl, self.c_star, self.xlim = GUI.get_gui_config()
+        self.smooth_lvl = tk.IntVar(value=self.smooth_lvl) if 3 <= self.smooth_lvl <= 81 else tk.IntVar(value=20)
         self.data = {}
         self.calibration_data = {}
         self.paths = {} 
@@ -533,7 +541,7 @@ class GUI:
         self.v_star_max = tk.StringVar(value="3000")
         self.v_star = tk.StringVar()
         self.v_star_inv = tk.StringVar()
-        self.unplot_var = tk.IntVar()
+        self.unplot_var = tk.IntVar(value=1)
         self._0_var = tk.IntVar()
         self.vcmd = self.root.register(GUI.validate)
         

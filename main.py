@@ -586,8 +586,8 @@ class GUI:
         self.scale_log_buttons = tuple([tk.Button(self.scale_entries_frames[i], text='Log', command=lambda i=i: self.toggle_log(i)) for i in range(2)])
         self.avg_button = tk.Button(self.multiple_selection_frame, text="Average", command=lambda : self.load_data(True), bg='white')
         self.all_button = tk.Button(self.multiple_selection_frame, text="Load singles", command=self.load_data, bg='white')
-        self.select_all_files_button = tk.Button(self.multiple_selection_frame, text="Select All", command=lambda:select_all_files(self.file_listbox), bg='white')
-        self.unselect_all_files_button = tk.Button(self.multiple_selection_frame, text="Unselect All", command=lambda:unselect_all_files(self.file_listbox), bg='white')
+        self.select_all_files_button = tk.Button(self.multiple_selection_frame, text="Select All", command=lambda:GUI.select_all_files(self.file_listbox), bg='white')
+        self.unselect_all_files_button = tk.Button(self.multiple_selection_frame, text="Unselect All", command=lambda:GUI.unselect_all_files(self.file_listbox), bg='white')
 
         self.titles_labels = (tk.Label(self.titles_frames[0], text="Data from files", **self.label_style, anchor='center'),
                               tk.Label(self.titles_frames[1], text="Calibration", **self.label_style, anchor='center'))

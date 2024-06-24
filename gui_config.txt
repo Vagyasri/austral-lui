@@ -1,5 +1,5 @@
-Initial directory: ./austral-data-sample/instruments/lilas/private/calibration/20200910/230044/
-Congiguration directory: ./austral-data-sample/instruments/lilas/private/config/lidar
+Initial directory: ../austral-data-sample/instruments/lilas/private/calibration/20200910/230044/
+Congiguration directory: ../austral-data-sample/instruments/lilas/private/config/lidar
 Level of default y scale: 3
 Smoothing: Yes
 Smooth Level: 20

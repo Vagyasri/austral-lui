@@ -35,9 +35,11 @@ This is a python program that uses the tkinter module to create a GUI for austra
 - cd into the Repository: `cd austral-lui`
 - Run `make` -- This will create a virtual environmrnt and install the following in your virtual environment:
   - requirements
-  - 'pypr2'
-  - 'austral-scientific-layer' 
-
+  - pypr2
+  - austral-scientific-layer
+- Run `make install-samples` -- to install the data sample
+- Run `make run` -- to launch the program
+- Run `make test` -- to test all the tests
 
 ### Installing the prerequisites independently :
 - Run `make install-dev` - This will install 'pypr2', 'austral-scientific-layer', 'austral-data-samples' at one go.

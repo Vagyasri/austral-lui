@@ -1,0 +1,190 @@
+@startuml
+
+left to right direction
+actor "guest" as guest
+package Terminal {
+    (Check errors) as (CE)
+    (Run the project) as (RP)
+    (Update the project) as (UP)
+
+}
+package AustralGui {
+  
+    package MenuBar {
+        (Open files) as (OF)
+        (Toggle filters) as (TF)
+        (Set configuration directory) as (SCD)
+    }
+    
+    package LidarProfilesTab {
+        (Select channels) as (SCs)
+        (Set default channels) as (SDC)
+        (Set x scale) as (SXS1)
+        (Use Toolbar) as (UT1)
+
+    }
+    (Select files) as (SF)
+    package CalibrationTab {
+        (Select calibration files) as (SCF)
+        (Select channel) as (SC)
+        (Enter interval) as (EI)
+        (Toggle unplot) as (TU)
+        (Set x scale) as (SXS2)
+        (Use Toolbar) as (UT2)
+    }
+    
+    
+}
+
+note left of (OF)
+  Open the files you want to work on :
+    1. Click on menubar "File" and choose "Open" 
+    2. Select one or several files (it can be calibration files or measurement file)
+    3. Click on "Open" 
+end note
+
+note left of (SCF)
+  Choose the calibration files you want to work on :
+    1. Click on +45° pull down option and select the +45° file
+    2. Click on -45° pull down option and select the -45° file
+    3. (optional) Click on the "Select 0 file" checkbutton and
+    select all the 0° files you want to average 
+    in the pop up window and click on the "OK" button
+    4. Click on the "Set" button
+end note
+
+note right of (SC)
+  Choose the channel you want to work on :
+    1. (optional) Set the number of smooth points
+    2. Click on channel pull down option and select a channel
+end note
+
+note left of (EI)
+  Choose a relevant interval for computing V* :
+    1. Enter the minimum of the interval
+    2. Enter the maximum of the interval 
+    3. Click on the "Set Interval" button
+end note
+
+note left of (SXS2)
+  At the bottom of the window :
+    Display the calibration curves between two arbitrary ranges :
+      1. Enter the minimum of the interval
+      2. Enter the maximum of the interval 
+      3. Click on the "Set Scale" button
+    Toggle logarithmic mode :
+      1. Click on "Log" button to switch between log and linear mode
+end note
+
+note left of (SCs)
+  At the bottom of the window :
+    Display the lidar profiles between two arbitrary ranges :
+      1. Enter the minimum of the interval
+      2. Enter the maximum of the interval 
+      3. Click on the "Set Scale" button
+end note
+
+note right of (SDC)
+  Define default channels to move more easily from one file to another
+    1. Select the channels you interested in
+    2. Click on the "Set Default" button
+    3. Switch from one file to another at will
+end note
+
+note right of (TU)
+  Display/hide the V* calculation curves. 
+  Hiding the curves can make it easier to check 
+  that the 0° curve has been corrected correctly. 
+    1. Select the channels you interested in
+    2. Click on the "Set Default" button
+    3. Switch from one file to another at will
+end note
+
+note left of (TF)
+  Enable/Disable filters (background noise, e-noise, shift, deadtime, pr2)
+  Hiding the curves can make it easier to check 
+  that the 0° file has been corrected correctly. 
+    1. Select the channels you interested in
+    2. Click on the "Set Default" button
+    3. Switch from one file to another at will
+end note
+
+note right of (SCD)
+  Set configuration directory :
+    1. Click on menubar "Config" and choose "Set config directory" 
+    2. Select a configuration folder
+    3. Click on "OK" 
+end note
+
+note right of (SF)
+On the left listbox :
+  Case 1 : multiple selection disable
+    1. Click on the file you want to display
+  Case 2 : multiple selection enable
+    1. Click on the files you want to display 
+    (you can press the "a" key on the keyboard
+     to select files from one point to another)
+    2. Click on the "Average" button or the "Load singles" button
+    depending on whether you want to average or display all the curves.
+end note
+
+note right of (CE)
+The console may contain the message "File {file path} is not supported", 
+if you tried to display a file with unknow type, 
+or the message "Configuration directory {folder path} is incomplete",
+if you set the configuration directory to a wrong folder or incomplete folder.
+end note
+
+note left of (RP)
+  Run the graphic interface :
+    1. Make sure to be in the "austral-lui" folder. 
+    You can move in a child folder with the command:
+      "cd name_of_the_folder"
+    or you can move in the parent folder with:
+      "cd .."
+    2. Make sure the virtual environment is activated:
+      ". austral-lui-env/bin/activate"
+    3. Run the main.py file:
+      "python3 main.py"
+end note
+
+note right of (UP)
+  Update the project :
+    1. Make sure the virtual environment is activated with the command:
+      "git pull"
+end note
+
+note right of (UT1)
+  Navigate in curve display at the bottom of the window:
+    A. Use the zoom:
+      1. Click on the zoom icon
+      2. Select an area with:
+        a. Left click to zoom in
+        b. Right click to zoom out
+    B. Move around the curves:
+      1. Click on the move icon
+      2. Swipe an area with:
+        a. Left click to move around
+        b. Right click to zoom
+    C. Reset curves:
+      1. Click in the house icon
+    D. Come back to previous move:
+      1. Click on the left-arrow icon
+end note
+
+(SF) -> (SCs)
+(OF) -> (SCF)
+(OF) -> (SF)
+(SCF) -> (SC)
+(SC) -> (SXS2)
+(SC) -> (UT2)
+(SCs) -> (SXS1)
+(SCs) -> (UT1)
+
+(SC) -> (EI)
+(EI) -> (TU)
+(guest) --> AustralGui
+(guest) --> Terminal
+
+
+@enduml

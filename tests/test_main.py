@@ -2,9 +2,9 @@ from main import *
 import pytest
 from numpy import nan
 
-config = get_config(r'./austral-data-sample/instruments/lilas/private/config/lidar', *([False] * 4))
-config_dir=r'./austral-data-sample/instruments/lilas/private/config/lidar'
-directory = r'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
+config = get_config(r'../austral-data-sample/instruments/lilas/private/config/lidar', *([False] * 4))
+config_dir=r'../austral-data-sample/instruments/lilas/private/config/lidar'
+directory = r'../austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
 filenames = [directory + file_name for file_name in ['l2352800.005799', 'l2352800.015859', 'l2352800.025916', 'l2352800.035973']]
 
 def arrays_are_equal(a, b):

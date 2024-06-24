@@ -2,9 +2,9 @@ from licel_treatment import *
 import numpy as np
 from numpy import nan
 import pytest
-config = get_config(r'./austral-data-sample/instruments/lilas/private/config/lidar', *([False] * 4))
-config_dir=r'./austral-data-sample/instruments/lilas/private/config/lidar'
-directory = r'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
+config = get_config(r'../austral-data-sample/instruments/lilas/private/config/lidar', *([False] * 4))
+config_dir=r'../austral-data-sample/instruments/lilas/private/config/lidar'
+directory = r'../austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
 filenames = [directory + file_name for file_name in ['l2352800.005799', 'l2352800.015859', 'l2352800.025916', 'l2352800.035973']]
 
 def arrays_are_equal(a, b):
@@ -79,9 +79,9 @@ def test_get_calibration_data():
         assert arrays_are_equal(expected_output[chan], actual_output[chan])
 
 def test_get_polarisation_data():
-    paths = ['./austral-data-sample/instruments/lilas/private/calibration/20210112/200449/l2111220.082534', 
-             './austral-data-sample/instruments/lilas/private/calibration/20210112/200449/l2111220.123147', 
-             './austral-data-sample/instruments/lilas/private/calibration/20210112/200449/l2111220.195610'] 
+    paths = ['../austral-data-sample/instruments/lilas/private/calibration/20210112/200449/l2111220.082534', 
+             '../austral-data-sample/instruments/lilas/private/calibration/20210112/200449/l2111220.123147', 
+             '../austral-data-sample/instruments/lilas/private/calibration/20210112/200449/l2111220.195610'] 
     input_ = (paths, config_dir)
     expected_output = (([nan, 1.0069961318471805, 1.0065612948905076, 1.0063249375067305, 1.0067051509260394, 1.0035520315328734, 1.0241617283625588, 0.9544049414521795, 0.7847005138430861, 0.4089363559478913, 0.7874193611384155, 0.6745356927148777, 0.8026248879451309, 0.7617550510101169, 0.7214268312948414, 0.692768228612746, 0.5760597147104406, 0.5555081459344821, 0.45725471354554237, 0.4362832432870485],
                         [nan, 1.007020490849987, 1.0067263032713825, 1.00662108251663, 1.0067074798598006, 1.0025909288841015, 1.0271325683551824, 0.9568529118462541, 0.87825805059208, 0.43545057856446595, 0.7136101149236365, 0.7459648197608151, 0.7732133879284664, 0.8265834988248988, 0.7257273275794223, 0.7548410329719497, 0.6108929553401281, 0.6112824587908661, 0.501399607041626, 0.48033966529991323],
@@ -141,8 +141,8 @@ def test_find_ylim():
 
 
 def test_is_a_supported_file():
-    supported_file = './austral-data-sample/instruments/lilas/private/calibration/20210112/200449/l2111220.082534'
-    not_supported_file = './austral-data-sample/instruments/lilas/private/calibration/20210112/200449/temp.dat'
+    supported_file = '../austral-data-sample/instruments/lilas/private/calibration/20210112/200449/l2111220.082534'
+    not_supported_file = '../austral-data-sample/instruments/lilas/private/calibration/20210112/200449/temp.dat'
     for expected_output, input_ in enumerate((not_supported_file, supported_file)):
         actual_output = is_a_supported_file(input_) 
         assert expected_output == actual_output

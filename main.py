@@ -10,7 +10,7 @@ from pypr2.Pr2Object import Pr2Object
 class GUI:
     
     def set_config_directory(self):
-        self.config_dir = './austral-data-sample/instruments/lilas/private/config/lidar'
+        self.config_dir = '../austral-data-sample/instruments/lilas/private/config/lidar'
         self.config_dir = tk.filedialog.askdirectory(initialdir=self.config_dir)
 #r'./au stral-data-sample/instruments/lilas/private/measurement/2023/05/28')
 
@@ -485,8 +485,8 @@ class GUI:
         values = []
         with open('./gui_config.txt', 'r') as file:
             lines = file.readlines()
-        default_values = ['./austral-data-sample/instruments/lilas/private/calibration/20210112/200449/',
-                           './austral-data-sample/instruments/lilas/private/config/lidar',
+        default_values = ['../austral-data-sample/instruments/lilas/private/calibration/20210112/200449/',
+                           '../austral-data-sample/instruments/lilas/private/config/lidar',
                            (0, 5000), (0, 5000), 3, True, 20, 0.004]
         for i, line in enumerate(lines):
             try:

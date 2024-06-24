@@ -1,9 +1,14 @@
 # Dependency directories
 pypr2/
 austral-data-sample/
+samples/
+data/
+testdata/
 austral-scientific-layer/
 
 # virtualenv
 *env*/
 
 .DS_Store
+__pycache__/
+.pytest_cache

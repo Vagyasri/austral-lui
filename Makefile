@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := help
+.DEFAULT_GOAL := install
 AUSTRAL_DATA_DIR = ./austral-data-sample
 PROJECT = austral-lui
 VENV_DIR = ${PROJECT}-env
@@ -8,6 +8,7 @@ VENV_PYTHON = $(VENV_BIN)/python
 PIP := $(VENV_BIN)/pip
 PYTEST := $(VENV_BIN)/pytest -vv
 TESTDIR := tests
+PROJECT_ROOT := $(shell pwd)
 
 .PHONY: help
 help:
@@ -19,14 +20,26 @@ help:
 	@echo "make install-austral-data-sample: install austral-data-sample"
 	@echo "make venv|austral-ui-env: create a virtual environment and install the dependencies"
 	@echo "make install-dev: install the development dependencies"
-	@echo "make pytest: run the tests"
+	@echo "make install-pkg: install the packages"
+	@echo "make run: run the project"
+	@echo "make pytest|test|tests: run the tests"
+	@echo "make xtest: run an individual test | How to run it: eg: make xtest TEST=tests/test_licel_treatment.py"
 	@echo "make clean: remove the temporary files"
 	@echo "make clean-packages: remove the installed packages"
 	@echo "make clean-venv|cleanvenv: remove the virtual environment"
 	@echo "make cleanall|clean-all: remove the virtual environment and the temporary files"
 
-# .PHONY: install
-# install: install dist/*.whl
+.PHONY: install
+install: venv install-pkg
+	@echo "Do you want to install the austral-data-sample? [y/N]"
+	@read -r answer; \
+	if [ "$$answer" = "y" ]; then \
+		make install-austral-data-sample; \
+	fi
+
+.PHONY: run
+run:
+	$(VENV_PYTHON) main.py
 
 .PHONY: install-pypr2
 install-pypr2:
@@ -45,9 +58,9 @@ install-asl install-austral-sci-layer install-austral-scientific-layer install-l
 	@echo "austral-scientific-layer successfully installed"
 
 .PHONY: install-austral-data-sample install-ads install-samples
-install-austral-data-sample install-ads:
+install-austral-data-sample install-ads install-samples:
 	@echo "Installing austral-data-sample"
-	@git clone git@gitlab-ssh.univ-lille.fr:loa/agora/austral-data-sample.git $(AUSTRAL_DATA_DIR)
+	@cd .. && git clone git@gitlab-ssh.univ-lille.fr:loa/agora/austral-data-sample.git $(AUSTRAL_DATA_DIR) && cd $(PROJECT)
 
 .PHONY: venv austral-ui-env
 venv austral-ui-env:
@@ -60,9 +73,13 @@ install-dev: venv install-pypr2 install-asl install-austral-data-sample
 .PHONY: install-pkg
 install-pkg: venv install-pypr2 install-asl
 
-.PHONY: pytest
-pytest:
-	$(PYTEST) $(TESTDIR)
+.PHONY: pytest test tests
+pytest test tests:
+	PYTHONPATH=$(PROJECT_ROOT) $(PYTEST) $(TESTDIR)
+
+.PHONY: xtest
+xtest:
+	@PYTHONPATH=$(PROJECT_ROOT) $(PYTEST) $(TEST)
 
 .PHONY: clean
 clean:

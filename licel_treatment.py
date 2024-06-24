@@ -17,7 +17,7 @@ def get_config(config_dir, shift, bg_noise, e_noise, deadtime):
     config.inclination_file = config_dir + '/lidar_angle.txt'
     config.dead_time_file = config_dir + '/Td_lidar.txt'
     return config
-directory = r'./austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
+directory = r'../austral-data-sample/instruments/lilas/private/measurement/2023/05/28/'
 
 #return unchanged data if r2 is True or divide by r2 if r2 is False
 def multiply_by_r2(distance, power, r2):
@@ -30,7 +30,7 @@ def multiply_by_r2(distance, power, r2):
 
 #return a dictionnary with shape {channel (str): (ranges (list), powers (list))}
 def get_data(filenames = [directory + file_name for file_name in ['l2352800.005799', 'l2352800.015859', 'l2352800.025916', 'l2352800.035973']], 
-             config_dir='./austral-data-sample/instruments/lilas/private/config/lidar', 
+             config_dir='../austral-data-sample/instruments/lilas/private/config/lidar', 
              shift=False, bg_noise=False, e_noise=False, deadtime=False, r2=False, average=False):
     factory = Pr2ObjectFactory(filenames, config=get_config(config_dir, shift, bg_noise, e_noise, deadtime), return_type='dict')
     pr2_objects = factory.get_pr2_objects()

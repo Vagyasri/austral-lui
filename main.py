@@ -283,7 +283,7 @@ class GUI:
         txt_labels = ['Select file +45 :', 'Select file -45 :', 'Select file 0 :']
         for i in range(2):
             selected_option = tk.StringVar()
-            option_menu = ttk.Combobox(self.licel_selection_frame, textvariable=selected_option, values=selected_files)
+            option_menu = ttk.Combobox(self.licel_selection_frame, textvariable=selected_option, values=selected_files, state='readonly')
             label = tk.Label(self.licel_selection_frame, text=txt_labels[i], **self.label_style, anchor='center')
             label.grid(sticky='ew', padx=5, pady=5)
             option_menu.grid(sticky='nsew')

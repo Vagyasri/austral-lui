@@ -55,7 +55,7 @@ This is a python program that uses the tkinter module to create a GUI for austra
 - Run `make tests` - All tests at one go
 - Run `make xtest` - Specify the test(eg: make xtest TEST=tests/test_licel_treatment.py)
 
-## Run tests:
+## Run tests manually:
 - cd into the Repository: `cd austral-lui`
 - Activate Virtual Environment: `. austral-lui-env/bin/activate`
 - Test *test_main.py*: `pytest test_main.py`

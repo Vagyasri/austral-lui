@@ -32,11 +32,14 @@ class GUI:
         self.chan_listbox.select_clear(0, tk.END)
         self.plot_main_data()
 
-    def select_all_files(self):
-        self.file_listbox.select_set(0, tk.END)
+    @staticmethod
+    def select_all_files(listbox):
+        listbox.select_set(0, tk.END)
 
-    def unselect_all_files(self):
-        self.file_listbox.select_clear(0, tk.END)
+    @staticmethod
+    def unselect_all_files(listbox):
+        listbox.select_clear(0, tk.END)
+
 
     def set_default_channels(self):
         self.default_channels = []
@@ -69,6 +72,16 @@ class GUI:
     def clean(object_):
         for widget in object_.winfo_children():
             widget.destroy()
+
+    @staticmethod
+    def rowconfigure(tk_obj, config):
+        for i, weight in enumerate(config):
+            tk_obj.grid_rowconfigure(i, weight=weight)
+
+    @staticmethod
+    def columnconfigure(tk_obj, config):
+        for i, weight in enumerate(config):
+            tk_obj.grid_columnconfigure(i, weight=weight)
 
     def toggle_selection(self):
         if self.multiple_selection_var.get():
@@ -257,8 +270,8 @@ class GUI:
             self._0_var.set(0)
             popup = tk.Toplevel()
             popup.title("Select 0 files for average")
-            listbox = tk.Listbox(popup, selectmode=tk.MULTIPLE)
-            listbox.pack()
+            listbox = tk.Listbox(popup, width=15, selectmode=tk.MULTIPLE, exportselection=False)
+            listbox.grid(column=0, columnspan=3, sticky='nsew')
             listbox.bind('<a>', lambda event: GUI.select(listbox))
             for file in self.file_listbox.get(0, tk.END):
                 listbox.insert(tk.END, file)
@@ -268,7 +281,16 @@ class GUI:
                 except ValueError:
                     pass
             ok_button = tk.Button(popup, text="OK", command=lambda : self.set_selected_0_files_and_quit(listbox, popup))
-            ok_button.pack()
+            select_all_button = tk.Button(popup, text="Select  All", command=lambda: GUI.select_all_files(listbox))
+            unselect_all_button = tk.Button(popup, text="Unselect All", command=lambda: GUI.unselect_all_files(listbox))
+
+            select_all_button.grid(column=0, row=2, sticky='nsew')
+            ok_button.grid(column=0, row=1, sticky='nsew')
+            unselect_all_button.grid(column=0, row=3, sticky='nsew')
+
+            GUI.columnconfigure(popup, (1, ))
+            GUI.rowconfigure(popup, (1, 0, 0, 0))
+
             popup.wait_visibility()
             popup.grab_set()
         else:
@@ -398,16 +420,6 @@ class GUI:
     
     def on_select(self, event):
         self.load_data()
-
-    @staticmethod
-    def rowconfigure(tk_obj, config):
-        for i, weight in enumerate(config):
-            tk_obj.grid_rowconfigure(i, weight=weight)
-
-    @staticmethod
-    def columnconfigure(tk_obj, config):
-        for i, weight in enumerate(config):
-            tk_obj.grid_columnconfigure(i, weight=weight)
                 
     def configure_grid(self):
         GUI.rowconfigure(self.root, (0, 1, 0, 0))
@@ -562,7 +574,7 @@ class GUI:
         self.multiple_selection_frame = tk.Frame(self.root, bg=self.colour)
 
         self.file_listbox = tk.Listbox(self.file_listbox_frame, width=16, selectmode=tk.SINGLE, exportselection=False) #or selectmode=tk.MULTIPLE
-        self.chan_listbox = tk.Listbox(self.chan_listbox_frame, width = 10, selectmode=tk.MULTIPLE, exportselection=False)
+        self.chan_listbox = tk.Listbox(self.chan_listbox_frame, width=10, selectmode=tk.MULTIPLE, exportselection=False)
 
         self.multiple_selection_checkbutton = tk.Checkbutton(self.root, text="Multiple Selection", variable=self.multiple_selection_var, command=self.toggle_selection, bg='white')
 
@@ -574,8 +586,8 @@ class GUI:
         self.scale_log_buttons = tuple([tk.Button(self.scale_entries_frames[i], text='Log', command=lambda i=i: self.toggle_log(i)) for i in range(2)])
         self.avg_button = tk.Button(self.multiple_selection_frame, text="Average", command=lambda : self.load_data(True), bg='white')
         self.all_button = tk.Button(self.multiple_selection_frame, text="Load singles", command=self.load_data, bg='white')
-        self.select_all_files_button = tk.Button(self.multiple_selection_frame, text="Select All", command=self.select_all_files, bg='white')
-        self.unselect_all_files_button = tk.Button(self.multiple_selection_frame, text="Unselect All", command=self.unselect_all_files, bg='white')
+        self.select_all_files_button = tk.Button(self.multiple_selection_frame, text="Select All", command=lambda:select_all_files(self.file_listbox), bg='white')
+        self.unselect_all_files_button = tk.Button(self.multiple_selection_frame, text="Unselect All", command=lambda:unselect_all_files(self.file_listbox), bg='white')
 
         self.titles_labels = (tk.Label(self.titles_frames[0], text="Data from files", **self.label_style, anchor='center'),
                               tk.Label(self.titles_frames[1], text="Calibration", **self.label_style, anchor='center'))

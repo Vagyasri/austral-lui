@@ -16,15 +16,28 @@ This is a python program that uses the tkinter module to create a GUI for austra
 ## Built With
 - `Python 3.10`
 
+## Pre-requistes for the windows system:
+- Ubuntu 20.04 and above (Jammy:22.04 LTS preferable)
+- Python 3.10
+- Make sure git ssh keys are set up correctly
+- xming
+- update: sudo apt update
+- upgeade: sudo apt upgrade -y
+- make: sudo apt install make
+- pip: sudo apt install python3 pip
+- virtual environment: sudo apt install python3-virtualenv
+- venv: sudo apt install python3.10-env
+- ktinker: sudo apt install python3-tk
+
 ## Installation
 - Open your terminal or command line
 - Clone the Repository into your system: `git clone git@github.com:Vagyasri/austral-lui.git`
 - cd into the Repository: `cd austral-lui`
-- Run `make dev` -- This will install the following:
+- Run `make` -- This will create a virtual environmrnt and install the following in your virtual environment:
+  - requirements
   - 'pypr2'
   - 'austral-scientific-layer' 
-  - 'austral-data-samples'
-- Run `make venv` -- This will create the virtual environnement and install the dependencies.
+
 
 ### Installing the prerequisites independently :
 - Run `make install-dev` - This will install 'pypr2', 'austral-scientific-layer', 'austral-data-samples' at one go.
@@ -34,29 +47,17 @@ This is a python program that uses the tkinter module to create a GUI for austra
 - Run `make install-asl` - This will install 'austral-scientific-layer'
 
 ## Run project:
-- cd into the Repository: `cd austral-lui`
-- Activate Virtual Environment: `. austral-lui-env/bin/activate`
-- Run *main.py*: `python3 main.py`
+- Run `make run`
 
-### Prerequisites for running project:
-- `pypr2`
-- `tkinter`
-- `numpy`
-- `matplotlib`
+## Run the tests:
+- Run `make tests` - All tests at one go
+- Run `make xtest` - Specify the test(eg: make xtest TEST=tests/test_licel_treatment.py)
 
 ## Run tests:
 - cd into the Repository: `cd austral-lui`
 - Activate Virtual Environment: `. austral-lui-env/bin/activate`
 - Test *test_main.py*: `pytest test_main.py`
 - Test *test_licel_treatment.py*: `pytest test_licel_treatment.py`
-
-### Prerequisites for running tests:
-- `pypr2`
-- `tkinter`
-- `numpy`
-- `matplotlib`
-- `austral-data-samples`
-- `pytest`
 
 #### Install tkinter module:
     - `brew install python-tk` for mac

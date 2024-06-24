@@ -8,6 +8,7 @@ VENV_PYTHON = $(VENV_BIN)/python
 PIP := $(VENV_BIN)/pip
 PYTEST := $(VENV_BIN)/pytest -vv
 TESTDIR := tests
+PROJECT_ROOT := $(shell pwd)
 
 .PHONY: help
 help:
@@ -21,7 +22,8 @@ help:
 	@echo "make install-dev: install the development dependencies"
 	@echo "make install-pkg: install the packages"
 	@echo "make run: run the project"
-	@echo "make pytest: run the tests"
+	@echo "make pytest|test|tests: run the tests"
+	@echo "make xtest: run an individual test | How to run it: eg: make xtest TEST=tests/test_licel_treatment.py"
 	@echo "make clean: remove the temporary files"
 	@echo "make clean-packages: remove the installed packages"
 	@echo "make clean-venv|cleanvenv: remove the virtual environment"
@@ -73,7 +75,11 @@ install-pkg: venv install-pypr2 install-asl
 
 .PHONY: pytest test tests
 pytest test tests:
-	$(PYTEST) $(TESTDIR)/*.py
+	PYTHONPATH=$(PROJECT_ROOT) $(PYTEST) $(TESTDIR)
+
+.PHONY: xtest
+xtest:
+	@PYTHONPATH=$(PROJECT_ROOT) $(PYTEST) $(TEST)
 
 .PHONY: clean
 clean:

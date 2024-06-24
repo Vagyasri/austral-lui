@@ -11,3 +11,4 @@ austral-scientific-layer/
 
 .DS_Store
 __pycache__/
+.pytest_cache

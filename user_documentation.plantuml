@@ -142,10 +142,8 @@ note left of (RP)
       "cd name_of_the_folder"
     or you can move in the parent folder with:
       "cd .."
-    2. Make sure the virtual environment is activated:
-      ". austral-lui-env/bin/activate"
-    3. Run the main.py file:
-      "python3 main.py"
+    3. Run the project:
+      "make run"
 end note
 
 note right of (UP)

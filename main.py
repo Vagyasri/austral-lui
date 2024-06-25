@@ -259,15 +259,28 @@ class GUI:
                 pass
         self.plot_main_data()
     
-    def set_selected_0_files_and_quit(self, listbox, popup):
-        self.selected_0_files = [listbox.get(i) for i in listbox.curselection()]
-        if self.selected_0_files:
-            self._0_var.set(1)
+    def set_selected_calibration_files_and_quit(self, listbox, popup, i):
+        self.selected_calibration_files[i] = [listbox.get(j) for j in listbox.curselection()]
+        if self.selected_calibration_files[i]:
+            self.calibration_vars[i].set(1)
         popup.destroy()
 
-    def create_popup(self):
-        if self._0_var.get():
-            self._0_var.set(0)
+    def create_and_place_popup_elements(self, listbox, popup, i):
+        ok_button = tk.Button(popup, text="OK", command=lambda : self.set_selected_calibration_files_and_quit(listbox, popup, i))
+        select_all_button = tk.Button(popup, text="Select  All", command=lambda: GUI.select_all_files(listbox))
+        unselect_all_button = tk.Button(popup, text="Unselect All", command=lambda: GUI.unselect_all_files(listbox))
+
+        select_all_button.grid(column=0, row=2, sticky='nsew')
+        ok_button.grid(column=0, row=1, sticky='nsew')
+        unselect_all_button.grid(column=0, row=3, sticky='nsew')
+
+        GUI.columnconfigure(popup, (1, ))
+        GUI.rowconfigure(popup, (1, 0, 0, 0))
+
+    def create_popup(self, i):
+        var = self.calibration_vars[i]
+        if var.get():
+            var.set(0)
             popup = tk.Toplevel()
             popup.title("Select 0 files for average")
             listbox = tk.Listbox(popup, width=15, selectmode=tk.MULTIPLE, exportselection=False)
@@ -275,74 +288,63 @@ class GUI:
             listbox.bind('<a>', lambda event: GUI.select(listbox))
             for file in self.file_listbox.get(0, tk.END):
                 listbox.insert(tk.END, file)
-            for file in self.selected_0_files:
+            for file in self.selected_calibration_files:
                 try:
                     listbox.selection_set(listbox.get(0, tk.END).index(file))
                 except ValueError:
                     pass
-            ok_button = tk.Button(popup, text="OK", command=lambda : self.set_selected_0_files_and_quit(listbox, popup))
-            select_all_button = tk.Button(popup, text="Select  All", command=lambda: GUI.select_all_files(listbox))
-            unselect_all_button = tk.Button(popup, text="Unselect All", command=lambda: GUI.unselect_all_files(listbox))
-
-            select_all_button.grid(column=0, row=2, sticky='nsew')
-            ok_button.grid(column=0, row=1, sticky='nsew')
-            unselect_all_button.grid(column=0, row=3, sticky='nsew')
-
-            GUI.columnconfigure(popup, (1, ))
-            GUI.rowconfigure(popup, (1, 0, 0, 0))
-
+            self.create_and_place_popup_elements(listbox, popup, i)
             popup.wait_visibility()
             popup.grab_set()
         else:
-            self.selected_0_files = []
+            self.selected_calibration_files[i] = []
 
     def set_licel_pull_down_menu(self):
         GUI.clean(self.licel_selection_frame)
         GUI.clean(self.channel_selection_frame)
         GUI.clean(self.v_star_frame)
         self.selection_vars = []
-        selected_files = self.file_listbox.get(0, tk.END)
-        txt_labels = ['Select file +45 :', 'Select file -45 :', 'Select file 0 :']
-        for i in range(2):
-            selected_option = tk.StringVar()
-            option_menu = ttk.Combobox(self.licel_selection_frame, textvariable=selected_option, values=selected_files, state='readonly')
-            label = tk.Label(self.licel_selection_frame, text=txt_labels[i], **self.label_style, anchor='center')
-            label.grid(sticky='ew', padx=5, pady=5)
-            option_menu.grid(sticky='nsew')
-            self.selection_vars.append(selected_option)
-        select_0_files_button = tk.Checkbutton(self.licel_selection_frame, text="Select 0 files", variable=self._0_var, command=self.create_popup)
+        txt_labels = ['Select +45 files', 'Select -45 files', 'Select 0 files']
+        for i in range(3):
+            select_calibration_files_button = tk.Checkbutton(self.licel_selection_frame, text=txt_labels[i], variable=self.calibration_vars[i], anchor="w", command=lambda x=i: self.create_popup(x))
+            select_calibration_files_button.grid(sticky='ew')
         set_button = tk.Button(self.licel_selection_frame, text="Set", command=self.set_channel_pull_down_menu, bg='white')
-        select_0_files_button.grid(sticky='ew')
         set_button.grid(sticky='ew')
-
-    def set_channel_pull_down_menu(self):
-        file_names = [var.get() for var in self.selection_vars] + self.selected_0_files
-        if file_names[0] != '' and file_names[1] != '':
-            file_paths = []
-            for file_name in file_names:
+        
+    def set_calibration_data(self):
+        file_paths = []
+        for i in range(3):
+            file_paths.append([])
+            for file_name in self.selected_calibration_files[i]:
                 file_path = self.paths[file_name]
                 if not is_a_supported_file(file_path):
                     print(f'File {file_path} is not supported')
                     return
-                file_paths.append(file_path) 
-            try:
-                self.calibration_data = get_polarization_data(file_paths, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get())
-            except FileNotFoundError:
-                print(f'Configuration directory {self.config_dir} is incomplete')
-                return 
-            GUI.clean(self.channel_selection_frame)
-            GUI.clean(self.v_star_frame)
-            self.selected_chan.set('')   
-            
-            option_menu = tk.OptionMenu(self.channel_selection_frame, self.selected_chan, *self.calibration_data.keys(), command=self.set_v_star_menu_and_plot_calibration_data)
-            chan_label = tk.Label(self.channel_selection_frame, text="Select channel :", **self.label_style, anchor='center')
-            smooth_potentio_label = tk.Label(self.channel_selection_frame, text="Smooth points :", **self.label_style, anchor='center')
-            potentio = tk.Scale(self.channel_selection_frame, from_=3, to=81, orient=tk.HORIZONTAL, variable=self.smooth_lvl)
-            chan_label.grid(sticky='ew', padx=5, pady=5)
-            option_menu.grid(sticky='nsew')
-            smooth_potentio_label.grid(sticky='ew', padx=5, pady=5)
-            potentio.grid(sticky='ew', padx=5, pady=5)
+                file_paths[i].append(file_path)
+        try:
+            self.calibration_data = get_polarization_data(file_paths, self.config_dir, self.shift.get(), self.bg_noise.get(), self.e_noise.get(), self.deadtime.get())
+        except FileNotFoundError:
+            print(f'Configuration directory {self.config_dir} is incomplete')
+            return 
+        GUI.clean(self.channel_selection_frame)
+        GUI.clean(self.v_star_frame)
+        self.selected_chan.set('')  
 
+    def create_and_place_channel_menu(self):
+        option_menu = tk.OptionMenu(self.channel_selection_frame, self.selected_chan, *self.calibration_data.keys(), command=self.set_v_star_menu_and_plot_calibration_data)
+        chan_label = tk.Label(self.channel_selection_frame, text="Select channel :", **self.label_style, anchor='center')
+        smooth_potentio_label = tk.Label(self.channel_selection_frame, text="Smooth points :", **self.label_style, anchor='center')
+        potentio = tk.Scale(self.channel_selection_frame, from_=3, to=81, orient=tk.HORIZONTAL, variable=self.smooth_lvl)
+        chan_label.grid(sticky='ew', padx=5, pady=5)
+        option_menu.grid(sticky='nsew')
+        smooth_potentio_label.grid(sticky='ew', padx=5, pady=5)
+        potentio.grid(sticky='ew', padx=5, pady=5)
+
+    def set_channel_pull_down_menu(self):
+        
+        if self.calibration_vars[0].get() and self.calibration_vars[1].get():
+            self.set_calibration_data()
+            self.create_and_place_channel_menu()
             
     def unplot_45(self):
         if not self.unplot_var.get():
@@ -532,7 +534,7 @@ class GUI:
         self.axes = [None, None]
         self.default_channels = []
         self.calib_curves = []
-        self.selected_0_files = []
+        self.selected_calibration_files = [[] for i in range(3)]
     
         
         self.bg = '#de755e'
@@ -554,7 +556,7 @@ class GUI:
         self.v_star = tk.StringVar()
         self.v_star_inv = tk.StringVar()
         self.unplot_var = tk.IntVar(value=1)
-        self._0_var = tk.IntVar()
+        self.calibration_vars = [tk.IntVar() for i in range(3)]
         self.vcmd = self.root.register(GUI.validate)
         
         self.notebook = ttk.Notebook(self.root)

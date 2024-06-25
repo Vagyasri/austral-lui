@@ -81,10 +81,11 @@ def get_calibration_data(data, invert=False):
 
 #return a dictionnary with shape {channel pair: ((+45° ranges, +45° power ratios), (-45° ranges, -45° power ratios), (0° ranges, 0° power ratios)<-optional} with types {str: ((list, list), (list, list), (list, list)<- optional)}
 def get_polarization_data(paths, config_dir, shift, bg_noise, e_noise, deadtime):
-    all_data = [get_calibration_data(get_data(paths[i], config_dir, shift, bg_noise, e_noise, deadtime)) for i in range(2)]
-    _0_files_paths = paths[2:]
-    if _0_files_paths:
-        all_data.append(get_calibration_data(get_data(_0_files_paths, config_dir, shift, bg_noise, e_noise, deadtime, average=True), invert=True))
+    all_data = []
+    for i in range(3):
+        file_paths = paths[i]
+        if file_paths:
+            all_data.append(get_calibration_data(get_data(file_paths, config_dir, shift, bg_noise, e_noise, deadtime, average=True), invert=i>1))
     polar_data = {}
     for chan in all_data[0]:
         if chan in all_data[1]:
